@@ -10,8 +10,6 @@ import numpy as np
 st.set_page_config(layout="wide")
 
 
-import streamlit as st
-
 # Define a estilização do plano de fundo e do conteúdo
 st.markdown(
     """
@@ -20,14 +18,14 @@ st.markdown(
 
     /* Estilo para o fundo de tela */
     .stApp {
-        background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)),
-                          url("https://assets.datamation.com/uploads/2023/11/dm_20231117-data-analytics-trends.png");
+        background-image: linear-gradient(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.8)), 
+                        url("https://stgcs.sharepoint.com/:i:/r/sites/BR01_T_BILo/Shared%20Documents/Supply%20Chain/Sem%20t%C3%ADtulo.png?csf=1&web=1&e=jowPi7");
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
-       margin-top: 35px; /* Ajuste este valor se necessário */
-    }
-    
+        margin-top: -50px; /* Ajuste este valor se necessário */
+}
+}
     /* Remove padding e margem do Streamlit */
     .main .block-container {
         padding-top: 0;
@@ -40,9 +38,9 @@ st.markdown(
         justify-content: space-between;
         align-items: center;
         padding: 0px 10px 10px 10px; /* Remove o espaçamento superior */
-        background-color: transparent; /* Remove o fundo cinza */
+        background-color: #F9F9F9; /* Remove o fundo cinza */
         border-radius: 8px;
-        color: #333;
+        color: #000000;
     }
     .header-left {
         display: flex;
@@ -62,7 +60,7 @@ st.markdown(
         font-weight: bold;
         text-transform: uppercase;
         font-family: 'FS Industrie', sans-serif;
-        color: white; /* Define o texto como branco */
+        color: black; /* Define o texto como branco */
     }
     .header-right img {
         width: 150px;
@@ -490,6 +488,12 @@ def main_TMA():
     if not df_TMA.empty:
         display_percentage_bar2(df_TMA)
         #st.write("Acompanhamento TMA:")
+
+        # Adicionando o filtro de Filial logo abaixo da barra de porcentagem
+        selected_filial = st.selectbox("", options=['Filiais'] + sorted(df_TMA['Filial'].unique()))
+        if selected_filial != 'Filiais':
+            df_TMA = df_TMA[df_TMA['Filial'] == selected_filial]
+
         st.dataframe(df_TMA, use_container_width=True)
     else:
         st.write("Nenhum dado disponível para exibir.")
@@ -558,13 +562,13 @@ def get_data_Senior():
         # Renomeando as colunas conforme o mapeamento necessário
         df_Senior = df_Senior.rename(columns={
             'nrCNPJFilial': 'Filial',
-            'cdRoteiro': 'No Roteiro',
-            'dtInicio': 'Data Início do Roteiro',
+            'cdRoteiro': 'Roteiro',
+            'dtInicio': 'Início',
             'dtExecucao': 'Data Execução',
             'cdAtividade': 'Motorista',
-            'dtPrevEntr': 'Previsão de entrega',
+            'dtPrevEntr': 'Previsão',
             'dsDestinatario': 'Destinatário',
-            'dsNrDocto': ' No Delivery',
+            'dsNrDocto': 'Delivery',
             'situacao': 'Situação',
             'dsOcorrencia': 'Ocorrência',
             'dsComplementoOcorr': 'Complemento Ocorrência',
@@ -574,6 +578,9 @@ def get_data_Senior():
             'Status2': 'Status Detalhado'
         })
 
+        df_Senior['Motorista'] = df_Senior['Motorista'].str.split().str[0]
+
+
         # Filtrando para mostrar apenas registros onde a Situação é "EM_ANDAMENTO"
         df_Senior = df_Senior.loc[df_Senior['Situação'] == 'EM_ANDAMENTO']
 
@@ -581,7 +588,7 @@ def get_data_Senior():
         df_Senior['Situação'] = np.where(df_Senior['Status'].str.startswith('-'), "No Prazo", "Fora do Prazo")
 
         # Convertendo a coluna "Previsão de entrega" para o formato dd/mm/yy hh:mm:ss
-        df_Senior['Previsão de entrega'] = pd.to_datetime(df_Senior['Previsão de entrega']).dt.strftime('%d/%m/%y %H:%M:%S')
+        df_Senior['Previsão'] = pd.to_datetime(df_Senior['Previsão']).dt.strftime('%d/%m/%y %H:%M:%S')
 
         # Função para atribuir ícones à coluna "Status"
         def assign_icons_status(val):
@@ -631,11 +638,11 @@ def get_data_Senior():
         # Reorganizando as colunas conforme a ordem desejada
         df_Senior = df_Senior[[
             'Filial', 
-            'No Roteiro', 
+            'Roteiro', 
             'Motorista', 
-            ' No Delivery', 
-            'Data Início do Roteiro', 
-            'Previsão de entrega', 
+            'Delivery', 
+            'Início', 
+            'Previsão', 
             'Situação', 
             'Status'
         ]]
@@ -688,18 +695,18 @@ col3, col4 = st.columns(2)
 
 # Primeira linha (colunas 1 e 2)
 with col1:
-    st.header("PackID")
-    main_packid()
-
-with col2:
     st.header("TMA")
     main_TMA()
-    
-# Segunda linha (colunas 3 e 4) - Espaço para futuros gráficos
-with col3:
+
+with col2:    
     st.header("Entregas Motoboy")
     df_Senior = get_data_Senior()  # Obtendo os dados do Senior
     st.dataframe(df_Senior)  # Exibindo os dados na tabela
+    
+# Segunda linha (colunas 3 e 4) - Espaço para futuros gráficos
+with col3:
+    st.header("PackID")
+    main_packid()
 
 with col4:
     st.write("")
