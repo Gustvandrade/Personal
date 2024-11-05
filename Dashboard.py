@@ -19,7 +19,7 @@ st.markdown(
     /* Estilo para o fundo de tela */
     .stApp {
         background-image: linear-gradient(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.8)), 
-                        url("https://stgcs.sharepoint.com/:i:/r/sites/BR01_T_BILo/Shared%20Documents/Supply%20Chain/Sem%20t%C3%ADtulo.png?csf=1&web=1&e=jowPi7");
+        url("https://i.ibb.co/jTBWwG3/Sem-t-tulo.png");
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
