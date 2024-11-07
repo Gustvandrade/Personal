@@ -1,10 +1,13 @@
 import streamlit as st
 import pyodbc
 import pandas as pd
-import matplotlib.pyplot as plt
-import time
+import plotly.express as px
+import time 
 import numpy as np
-
+from datetime import timedelta
+import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
+import plotly.graph_objects as go
 
 # Configuração da página para layout "wide"
 st.set_page_config(layout="wide")
@@ -652,39 +655,214 @@ def get_data_Senior():
         conn.close()  # Fechando a conexão
 
 # ClearCorrect-----------------------------------------------------------------------------------------------------
-# Função para obter os dados do TMA
+# Função para obter os dados do Clear
 def get_data_ClearCorrect():
     conn = get_connection()  
     if conn is None:
         return pd.DataFrame()  # Retorna um DataFrame vazio em caso de erro
 
     try:
-        # Query SQL com DISTINCT para trazer apenas valores distintos da coluna "Delivery"
         query = """
         SELECT DISTINCT 
-            Delivery,
-            [Shipping Point/Receiving Point],
-            [Shipping Conditions],
-            [Document Number of the Reference Document],
-            DateTime_Local,
-            [Last Updated],
-            TMA_Time
+            [J_1BNFDOC-DOCDAT],
+            [ZZPONUM],
+            [CTE],
+            [time],
+            [Refresh],
+            [VBRK-VSBED],
+            [J_1BNFLIN-WERKS]
         FROM dbo.TC_SD_BR_FAT_DIA;
         """
-        df_TMA = pd.read_sql_query(query, conn)
+        df_Clear = pd.read_sql_query(query, conn)
 
-        # Renomeando as colunas conforme o mapeamento solicitado
-        df_TMA = df_TMA.rename(columns={
-            'Shipping Point/Receiving Point': 'Filial',
-            'Shipping Conditions': 'Condição',
-            'Document Number of the Reference Document': 'No Pedido',
-            'Last Updated': 'Última Atualização',
-            'TMA_Time': 'Tempo em Aberto',
-            'DateTime_Local': 'Criação Delivery'
+        df_Clear = df_Clear.rename(columns={
+            'J_1BNFDOC-DOCDAT': 'Data doc',
+            'ZZPONUM': 'Caso',
+            'CTE': 'Rastreio',
+            'time': 'Hora',  # Nome alterado para 'Hora'
+            'Refresh': 'Última atualização',
+            'VBRK-VSBED': 'Condição de expedição',
+            'J_1BNFLIN-WERKS': 'Planta'
         })
-        return df_TMA
+        return df_Clear
     finally:
         conn.close()  # Fechando a conexão
+
+def get_data_ClearCorrect2():
+    conn = get_connection()  
+    if conn is None:
+        return pd.DataFrame()  # Retorna um DataFrame vazio em caso de erro
+
+    try:
+        query = """
+        SELECT DISTINCT 
+            Document,
+            Refresh
+            FROM dbo.TC_VF04;
+        """
+        df_Clear2 = pd.read_sql_query(query, conn)
+
+        df_Clear2 = df_Clear2.rename(columns={
+            'Document': 'Delivery',
+            'Refresh': 'Última atualização'
+            })
+        return df_Clear2
+    finally:
+        conn.close()  # Fechando a conexão
+
+from datetime import timedelta
+
+def display_clear_correct_chart(df_Clear, df_Clear2):
+    """
+    Displays a time series chart showing case counts, delivery counts, and target line per hour and day,
+    filtered to show only the last 24 hours.
+    """
+    try:
+        # Processar dados do df_Clear (casos)
+        df_Clear['Data_Hora'] = pd.to_datetime(
+            df_Clear['Data doc'].astype(str) + ' ' + df_Clear['Hora'].astype(str), 
+            format='%d.%m.%Y %H:%M:%S'
+        )
+        df_Clear['Hora_Fecha'] = df_Clear['Data_Hora'].dt.floor('H')
+        df_Clear['Data'] = df_Clear['Data_Hora'].dt.date
+
+        # Processar dados do df_Clear2 (deliveries)
+        df_Clear2['Data_Hora'] = pd.to_datetime(df_Clear2['Última atualização'])
+        df_Clear2['Hora_Fecha'] = df_Clear2['Data_Hora'].dt.floor('H')
+        df_Clear2['Data'] = df_Clear2['Data_Hora'].dt.date
+
+        # Filtrar dados para exibir apenas as últimas 24 horas
+        last_24_hours = pd.Timestamp.now() - timedelta(hours=24)
+        df_Clear = df_Clear[df_Clear['Data_Hora'] >= last_24_hours]
+        df_Clear2 = df_Clear2[df_Clear2['Data_Hora'] >= last_24_hours]
+
+        # Contar casos e deliveries por hora
+        df_count_casos = df_Clear.groupby(['Data', 'Hora_Fecha'])['Caso'].nunique().reset_index()
+        df_count_casos['Data_Hora'] = pd.to_datetime(
+            df_count_casos['Data'].astype(str) + ' ' + 
+            df_count_casos['Hora_Fecha'].dt.hour.astype(str) + ':00:00'
+        )
+        df_count_deliveries = df_Clear2.groupby(['Data', 'Hora_Fecha'])['Delivery'].nunique().reset_index()
+        df_count_deliveries['Data_Hora'] = pd.to_datetime(
+            df_count_deliveries['Data'].astype(str) + ' ' + 
+            df_count_deliveries['Hora_Fecha'].dt.hour.astype(str) + ':00:00'
+        )
+
+        # Verificar se há dados válidos
+        if (df_count_casos['Data_Hora'].min() is pd.NaT or 
+            df_count_casos['Data_Hora'].max() is pd.NaT or
+            df_count_deliveries['Data_Hora'].min() is pd.NaT or 
+            df_count_deliveries['Data_Hora'].max() is pd.NaT):
+            st.write("Base atualizando")
+            return
+
+        # Obter intervalo de tempo correto para o eixo X
+        min_date = max(df_count_casos['Data_Hora'].min(), last_24_hours)
+        max_date = pd.Timestamp.now()
+
+        # Criar figura com dois traces
+        fig = go.Figure()
+
+        # Adicionar linha para casos com rótulos de dados
+        fig.add_trace(go.Scatter(
+            x=df_count_casos['Data_Hora'],
+            y=df_count_casos['Caso'],
+            name='Casos',
+            line=dict(color='blue'),
+            mode='lines+text',
+            text=df_count_casos['Caso'],
+            textposition='top center',
+            textfont=dict(size=14)
+        ))
+
+        # Adicionar linha para deliveries com rótulos de dados
+        fig.add_trace(go.Scatter(
+            x=df_count_deliveries['Data_Hora'],
+            y=df_count_deliveries['Delivery'],
+            name='Deliveries',
+            line=dict(color='red'),
+            mode='lines+markers+text',
+            text=df_count_deliveries['Delivery'],
+            textposition='top center',
+            textfont=dict(size=14)
+        ))
+
+        # Adicionar linha de target
+        fig.add_trace(go.Scatter(
+            x=[min_date, max_date],
+            y=[12, 12],
+            name='Target (12/hora)',
+            line=dict(
+                color='gray',
+                dash='dash'
+            )
+        ))
+
+        # Obter a data do dia atual e filtrar as divisões dos dias
+        today = pd.to_datetime("today").normalize()  # A data de hoje à meia-noite
+
+        # Adicionar marcadores de divisão de dias a partir das 00:00 do dia atual
+        for date in pd.date_range(start=today, end=df_count_casos['Data_Hora'].max(), freq='D'):
+            # Adicionar linha vertical para cada dia a partir das 00:00
+            fig.add_vline(
+                x=date,
+                line_width=1,
+                line_dash="dash",
+                line_color="rgba(128, 128, 128, 0.5)"
+            )
+            
+            # Adicionar anotação de data
+            fig.add_annotation(
+                x=date,
+                yref="paper",
+                y=1.05,
+                text=date.strftime('%d/%m'),
+                showarrow=False,
+                font=dict(size=10)
+            )
+
+        # Determinar o intervalo de datas para o eixo X
+        min_date = min(df_count_casos['Data_Hora'].min(),
+                      df_count_deliveries['Data_Hora'].min())
+        max_date = max(df_count_casos['Data_Hora'].max(),
+                      df_count_deliveries['Data_Hora'].max())
+
+        fig.update_layout(
+            title="",
+            yaxis_title='Quantidade Casos',
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="top",
+                y=-0.2,
+                xanchor="center",
+                x=0.5,
+                font=dict(size=10)
+            ),
+            xaxis=dict(
+                tickmode='array',
+                tickvals=pd.date_range(start=min_date, end=max_date, freq='H'),
+                ticktext=[(x).strftime('%H') for x in pd.date_range(start=min_date, end=max_date, freq='H')],
+                tickangle=0,
+                tickfont=dict(size=14)
+            ),
+            margin=dict(t=100, r=20, b=100, l=50),
+            height=500
+        )
+
+        # Forçar autoscale no eixo Y
+        fig.update_yaxes(
+            automargin=True,
+            rangemode='tozero',  # Garante que o gráfico comece do zero se necessário
+        )     
+
+        # Exibir o gráfico
+        st.plotly_chart(fig, use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Erro ao gerar o gráfico: {str(e)}")
+        st.write("Por favor, verifique se os dados estão no formato correto.")
+
 
 
 #Divisão da pág e exibição-----------------------------------------------------------------------------------------------------
@@ -695,21 +873,23 @@ col3, col4 = st.columns(2)
 
 # Primeira linha (colunas 1 e 2)
 with col1:
-    st.header("TMA")
+    st.markdown("<h3 style='text-align: center; font-size: 24px;'>Tempo Médio de Atendimento</h3>", unsafe_allow_html=True)
     main_TMA()
 
 with col2:    
-    st.header("Entregas Motoboy")
+    st.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
     df_Senior = get_data_Senior()  # Obtendo os dados do Senior
     st.dataframe(df_Senior)  # Exibindo os dados na tabela
     
-# Segunda linha (colunas 3 e 4) - Espaço para futuros gráficos
 with col3:
-    st.header("PackID")
-    main_packid()
+    st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True)
+    df_Clear = get_data_ClearCorrect()
+    df_Clear2 = get_data_ClearCorrect2()    
+    display_clear_correct_chart(df_Clear, df_Clear2)
 
-with col4:
-    st.write("")
+with col4:    
+    st.markdown("<h3 style='text-align: center; font-size: 24px;'>Sensores de temperatura</h3>", unsafe_allow_html=True)
+    main_packid()
 
 
 #time.sleep(20)
