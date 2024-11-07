@@ -649,7 +649,10 @@ def get_data_Senior():
             'Situação', 
             'Status'
         ]]
-       
+
+        # Exibindo a tabela ajustada à largura da tela
+        st.dataframe(df_Senior, use_container_width=True)
+
         return df_Senior  # Retornando o DataFrame final
     finally:
         conn.close()  # Fechando a conexão
@@ -741,12 +744,12 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
         df_count_casos['Data_Hora'] = pd.to_datetime(
             df_count_casos['Data'].astype(str) + ' ' + 
             df_count_casos['Hora_Fecha'].dt.hour.astype(str) + ':00:00'
-        )
+        )  - pd.Timedelta(hours=3)
         df_count_deliveries = df_Clear2.groupby(['Data', 'Hora_Fecha'])['Delivery'].nunique().reset_index()
         df_count_deliveries['Data_Hora'] = pd.to_datetime(
             df_count_deliveries['Data'].astype(str) + ' ' + 
             df_count_deliveries['Hora_Fecha'].dt.hour.astype(str) + ':00:00'
-        )
+        ) - pd.Timedelta(hours=3)
 
         # Verificar se há dados válidos
         if (df_count_casos['Data_Hora'].min() is pd.NaT or 
@@ -866,31 +869,36 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
 
 
 #Divisão da pág e exibição-----------------------------------------------------------------------------------------------------
+def display_indicators():
+    # Usar st.selectbox para selecionar a aba de maneira discreta
+    aba_selecionada = st.selectbox("Selecione um indicador:", 
+                                   ['Tempo Médio de Atendimento', 
+                                    'Entregas Motoboy', 
+                                    'Faturamento ClearCorrect', 
+                                    'Sensores de Temperatura'])
 
-# Dividindo a página em uma grade de 2x2
-col1, col2 = st.columns(2)
-col3, col4 = st.columns(2)
+    # Lógica para exibir o conteúdo baseado na aba selecionada
+    if aba_selecionada == 'Tempo Médio de Atendimento':
+        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Tempo Médio de Atendimento</h3>", unsafe_allow_html=True)
+        main_TMA()
 
-# Primeira linha (colunas 1 e 2)
-with col1:
-    st.markdown("<h3 style='text-align: center; font-size: 24px;'>Tempo Médio de Atendimento</h3>", unsafe_allow_html=True)
-    main_TMA()
+    elif aba_selecionada == 'Entregas Motoboy':
+        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
+        df_Senior = get_data_Senior()  # Obtendo os dados do Senior
+        #st.dataframe(df_Senior)  # Exibindo os dados na tabela
 
-with col2:    
-    st.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
-    df_Senior = get_data_Senior()  # Obtendo os dados do Senior
-    st.dataframe(df_Senior)  # Exibindo os dados na tabela
-    
-with col3:
-    st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True)
-    df_Clear = get_data_ClearCorrect()
-    df_Clear2 = get_data_ClearCorrect2()    
-    display_clear_correct_chart(df_Clear, df_Clear2)
+    elif aba_selecionada == 'Faturamento ClearCorrect':
+        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True)
+        df_Clear = get_data_ClearCorrect()
+        df_Clear2 = get_data_ClearCorrect2()    
+        display_clear_correct_chart(df_Clear, df_Clear2)
 
-with col4:    
-    st.markdown("<h3 style='text-align: center; font-size: 24px;'>Sensores de temperatura</h3>", unsafe_allow_html=True)
-    main_packid()
+    elif aba_selecionada == 'Sensores de Temperatura':
+        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Sensores de temperatura</h3>", unsafe_allow_html=True)
+        main_packid()
 
+# Chame a função `display_indicators()` onde for necessário
+display_indicators()
 
 #time.sleep(20)
 #st.rerun()
