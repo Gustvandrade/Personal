@@ -8,6 +8,7 @@ from datetime import timedelta
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
+import streamlit.components.v1 as components
 
 # Configuração da página para layout "wide"
 st.set_page_config(layout="wide")
@@ -897,5 +898,5 @@ def display_indicators():
 # Chame a função `display_indicators()` onde for necessário
 display_indicators()
 
-#time.sleep(20)
-#st.rerun()
+time.sleep(20) 
+st.rerun()
