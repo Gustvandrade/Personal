@@ -8,6 +8,7 @@ from datetime import timedelta
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
+import pytz
 
 # Configuração da página para layout "wide"
 st.set_page_config(layout="wide")
@@ -710,7 +711,8 @@ def get_data_ClearCorrect2():
     finally:
         conn.close()  # Fechando a conexão
 
-from datetime import timedelta
+# Definir timezone como horário de Brasília (UTC-3)
+timezone = pytz.timezone("America/Sao_Paulo")
 
 def display_clear_correct_chart(df_Clear, df_Clear2):
     """
@@ -724,13 +726,14 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
             format='%d.%m.%Y %H:%M:%S'
         )
 
+        # Definir data de hoje e ontem de forma explícita, normalizando qualquer problema de timezone
         today = pd.to_datetime("today").normalize()  # Data de hoje à meia-noite
-        yesterday = today - timedelta(days=1)  # Data de ontem à meia-noite
+        yesterday = (today - timedelta(days=1)).date()  # Data de ontem (apenas a data)
 
-        # Corrige apenas o horário do dia anterior
+        # Aplicar ajuste de 3 horas apenas para registros do dia anterior
         df_Clear['Data_Hora'] = df_Clear.apply(
             lambda row: row['Data_Hora'] - timedelta(hours=3) 
-            if row['Data_Hora'].date() == yesterday.date() else row['Data_Hora'],
+            if row['Data_Hora'].date() == yesterday else row['Data_Hora'],
             axis=1
         )
 
@@ -752,12 +755,12 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
         df_count_casos['Data_Hora'] = pd.to_datetime(
             df_count_casos['Data'].astype(str) + ' ' + 
             df_count_casos['Hora_Fecha'].dt.hour.astype(str) + ':00:00'
-        )  #- pd.Timedelta(hours=3)
+        )
         df_count_deliveries = df_Clear2.groupby(['Data', 'Hora_Fecha'])['Delivery'].nunique().reset_index()
         df_count_deliveries['Data_Hora'] = pd.to_datetime(
             df_count_deliveries['Data'].astype(str) + ' ' + 
             df_count_deliveries['Hora_Fecha'].dt.hour.astype(str) + ':00:00'
-        ) #- pd.Timedelta(hours=3)
+        )
 
         # Verificar se há dados válidos
         if (df_count_casos['Data_Hora'].min() is pd.NaT or 
@@ -814,15 +817,12 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
 
         # Adicionar marcadores de divisão de dias a partir das 00:00 do dia atual
         for date in pd.date_range(start=today, end=df_count_casos['Data_Hora'].max(), freq='D'):
-            # Adicionar linha vertical para cada dia a partir das 00:00
             fig.add_vline(
                 x=date,
                 line_width=1,
                 line_dash="dash",
                 line_color="rgba(128, 128, 128, 0.5)"
             )
-            
-            # Adicionar anotação de data
             fig.add_annotation(
                 x=date,
                 yref="paper",
@@ -864,7 +864,7 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
         # Forçar autoscale no eixo Y
         fig.update_yaxes(
             automargin=True,
-            rangemode='tozero',  # Garante que o gráfico comece do zero se necessário
+            rangemode='tozero',
         )     
 
         # Exibir o gráfico
