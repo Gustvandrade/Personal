@@ -744,12 +744,12 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
         df_count_casos['Data_Hora'] = pd.to_datetime(
             df_count_casos['Data'].astype(str) + ' ' + 
             df_count_casos['Hora_Fecha'].dt.hour.astype(str) + ':00:00'
-        )  - pd.Timedelta(hours=3)
+        )  #- pd.Timedelta(hours=3)
         df_count_deliveries = df_Clear2.groupby(['Data', 'Hora_Fecha'])['Delivery'].nunique().reset_index()
         df_count_deliveries['Data_Hora'] = pd.to_datetime(
             df_count_deliveries['Data'].astype(str) + ' ' + 
             df_count_deliveries['Hora_Fecha'].dt.hour.astype(str) + ':00:00'
-        ) - pd.Timedelta(hours=3)
+        ) #- pd.Timedelta(hours=3)
 
         # Verificar se há dados válidos
         if (df_count_casos['Data_Hora'].min() is pd.NaT or 
