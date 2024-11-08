@@ -726,7 +726,7 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
 
         # Ajuste de horário: Subtrair 3 horas se for o dia anterior
         today = pd.to_datetime("today").normalize()  # A data de hoje à meia-noite
-        df_Clear['Data_Hora'] = df_Clear.apply(lambda row: row['Data_Hora'] - timedelta(hours=3) 
+        df_Clear['Data_Hora'] = df_Clear.apply(lambda row: row['Data_Hora'] - timedelta(hours=0) 
                                                if row['Data_Hora'].date() == (today - timedelta(days=1)).date() 
                                                else row['Data_Hora'], axis=1)
 
