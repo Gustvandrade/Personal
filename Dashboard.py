@@ -8,7 +8,6 @@ from datetime import timedelta
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
-import pytz
 
 # Configuração da página para layout "wide"
 st.set_page_config(layout="wide")
@@ -650,7 +649,7 @@ def get_data_Senior():
             'Situação', 
             'Status'
         ]]
-        
+       
         return df_Senior  # Retornando o DataFrame final
     finally:
         conn.close()  # Fechando a conexão
@@ -711,8 +710,6 @@ def get_data_ClearCorrect2():
     finally:
         conn.close()  # Fechando a conexão
 
-# Definir timezone como horário de Brasília (UTC-3)
-timezone = pytz.timezone("America/Sao_Paulo")
 
 def display_clear_correct_chart(df_Clear, df_Clear2):
     """
@@ -725,18 +722,6 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
             df_Clear['Data doc'].astype(str) + ' ' + df_Clear['Hora'].astype(str), 
             format='%d.%m.%Y %H:%M:%S'
         )
-
-        # Definir data de hoje e ontem de forma explícita, normalizando qualquer problema de timezone
-        today = pd.to_datetime("today").normalize()  # Data de hoje à meia-noite
-        yesterday = (today - timedelta(days=1)).date()  # Data de ontem (apenas a data)
-
-        # Aplicar ajuste de 3 horas apenas para registros do dia anterior
-        df_Clear['Data_Hora'] = df_Clear.apply(
-            lambda row: row['Data_Hora'] - timedelta(hours=3) 
-            if row['Data_Hora'].date() == yesterday else row['Data_Hora'],
-            axis=1
-        )
-
         df_Clear['Hora_Fecha'] = df_Clear['Data_Hora'].dt.floor('H')
         df_Clear['Data'] = df_Clear['Data_Hora'].dt.date
 
@@ -746,7 +731,7 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
         df_Clear2['Data'] = df_Clear2['Data_Hora'].dt.date
 
         # Filtrar dados para exibir apenas as últimas 24 horas
-        last_24_hours = pd.Timestamp.now() - timedelta(hours=24)
+        last_24_hours = pd.Timestamp.now() - timedelta(hours=24)  # Remover fuso horário
         df_Clear = df_Clear[df_Clear['Data_Hora'] >= last_24_hours]
         df_Clear2 = df_Clear2[df_Clear2['Data_Hora'] >= last_24_hours]
 
@@ -756,6 +741,7 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
             df_count_casos['Data'].astype(str) + ' ' + 
             df_count_casos['Hora_Fecha'].dt.hour.astype(str) + ':00:00'
         )
+
         df_count_deliveries = df_Clear2.groupby(['Data', 'Hora_Fecha'])['Delivery'].nunique().reset_index()
         df_count_deliveries['Data_Hora'] = pd.to_datetime(
             df_count_deliveries['Data'].astype(str) + ' ' + 
@@ -817,12 +803,15 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
 
         # Adicionar marcadores de divisão de dias a partir das 00:00 do dia atual
         for date in pd.date_range(start=today, end=df_count_casos['Data_Hora'].max(), freq='D'):
+            # Adicionar linha vertical para cada dia a partir das 00:00
             fig.add_vline(
                 x=date,
                 line_width=1,
                 line_dash="dash",
                 line_color="rgba(128, 128, 128, 0.5)"
             )
+            
+            # Adicionar anotação de data
             fig.add_annotation(
                 x=date,
                 yref="paper",
@@ -864,7 +853,7 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
         # Forçar autoscale no eixo Y
         fig.update_yaxes(
             automargin=True,
-            rangemode='tozero',
+            rangemode='tozero',  # Garante que o gráfico comece do zero se necessário
         )     
 
         # Exibir o gráfico
@@ -873,7 +862,6 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
     except Exception as e:
         st.error(f"Erro ao gerar o gráfico: {str(e)}")
         st.write("Por favor, verifique se os dados estão no formato correto.")
-
 
 
 #Divisão da pág e exibição-----------------------------------------------------------------------------------------------------
@@ -894,6 +882,7 @@ def display_indicators():
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
         df_Senior = get_data_Senior()  # Obtendo os dados do Senior
         st.dataframe(df_Senior, use_container_width=True)
+        
 
     elif aba_selecionada == 'Faturamento ClearCorrect':
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True)
