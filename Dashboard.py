@@ -649,10 +649,7 @@ def get_data_Senior():
             'Situação', 
             'Status'
         ]]
-
-        # Exibindo a tabela ajustada à largura da tela
-        st.dataframe(df_Senior, use_container_width=True)
-
+        
         return df_Senior  # Retornando o DataFrame final
     finally:
         conn.close()  # Fechando a conexão
@@ -726,6 +723,13 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
             df_Clear['Data doc'].astype(str) + ' ' + df_Clear['Hora'].astype(str), 
             format='%d.%m.%Y %H:%M:%S'
         )
+
+        # Ajuste de horário: Subtrair 3 horas se for o dia anterior
+        today = pd.to_datetime("today").normalize()  # A data de hoje à meia-noite
+        df_Clear['Data_Hora'] = df_Clear.apply(lambda row: row['Data_Hora'] - timedelta(hours=3) 
+                                               if row['Data_Hora'].date() == (today - timedelta(days=1)).date() 
+                                               else row['Data_Hora'], axis=1)
+
         df_Clear['Hora_Fecha'] = df_Clear['Data_Hora'].dt.floor('H')
         df_Clear['Data'] = df_Clear['Data_Hora'].dt.date
 
@@ -885,7 +889,7 @@ def display_indicators():
     elif aba_selecionada == 'Entregas Motoboy':
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
         df_Senior = get_data_Senior()  # Obtendo os dados do Senior
-        #st.dataframe(df_Senior)  # Exibindo os dados na tabela
+        st.dataframe(df_Senior, use_container_width=True)
 
     elif aba_selecionada == 'Faturamento ClearCorrect':
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True)
