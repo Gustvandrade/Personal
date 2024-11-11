@@ -584,7 +584,6 @@ def get_data_Senior():
 
         df_Senior['Motorista'] = df_Senior['Motorista'].str.split().str[0]
 
-
         # Filtrando para mostrar apenas registros onde a Situação é "EM_ANDAMENTO"
         df_Senior = df_Senior.loc[df_Senior['Situação'] == 'EM_ANDAMENTO']
 
@@ -631,7 +630,7 @@ def get_data_Senior():
         df_Senior['Status'] = df_Senior['Status'].apply(assign_icons_status)
         df_Senior = sort_status_column(df_Senior)
 
-        # Exibir a barra de porcentagens antes de fechar a conexão
+        # Exibir a barra de porcentagens **antes** da tabela
         display_percentage_bar_status(df_Senior)
 
         # Adicionando o filtro de Filial logo abaixo da barra de porcentagem
@@ -640,7 +639,7 @@ def get_data_Senior():
             df_Senior = df_Senior[df_Senior['Filial'] == selected_filial]
 
         # Reorganizando as colunas conforme a ordem desejada
-        df_Senior = df_Senior[[
+        df_Senior = df_Senior[[ 
             'Filial', 
             'Roteiro', 
             'Motorista', 
@@ -650,7 +649,7 @@ def get_data_Senior():
             'Situação', 
             'Status'
         ]]
-       
+
         return df_Senior  # Retornando o DataFrame final
     finally:
         conn.close()  # Fechando a conexão
@@ -866,6 +865,7 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
 
 
 #Divisão da pág e exibição-----------------------------------------------------------------------------------------------------
+# Função para exibir o conteúdo dinâmico
 def display_indicators():
     # Usar st.selectbox para selecionar a aba de maneira discreta
     aba_selecionada = st.selectbox("Selecione um indicador:", 
@@ -874,30 +874,28 @@ def display_indicators():
                                     'Faturamento ClearCorrect', 
                                     'Sensores de Temperatura'])
 
-    # Criação de um container vazio que será atualizado com os gráficos ou dados
-    content_container = st.empty()  # Container que será limpo antes de renderizar novo conteúdo
+    # Criação de um container vazio para renderizar o conteúdo
+    content_container = st.empty()
+
+    # Limpar o conteúdo anterior toda vez que uma nova aba for selecionada
+    content_container.empty()
 
     # Lógica para exibir o conteúdo baseado na aba selecionada
     if aba_selecionada == 'Tempo Médio de Atendimento':
-        content_container.empty()  # Limpar o conteúdo anterior
         content_container.markdown("<h3 style='text-align: center; font-size: 24px;'>Tempo Médio de Atendimento</h3>", unsafe_allow_html=True)
         main_TMA()
 
     elif aba_selecionada == 'Entregas Motoboy':
-        content_container.empty()  # Limpar o conteúdo anterior
         content_container.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
-        df_Senior = get_data_Senior()  # Obtendo os dados do Senior
-        content_container.dataframe(df_Senior, use_container_width=True)
+        st.dataframe(get_data_Senior(), use_container_width=True)
         
     elif aba_selecionada == 'Faturamento ClearCorrect':
-        content_container.empty()  # Limpar o conteúdo anterior
         content_container.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True)
         df_Clear = get_data_ClearCorrect()
         df_Clear2 = get_data_ClearCorrect2()    
         display_clear_correct_chart(df_Clear, df_Clear2)
 
     elif aba_selecionada == 'Sensores de Temperatura':
-        content_container.empty()  # Limpar o conteúdo anterior
         content_container.markdown("<h3 style='text-align: center; font-size: 24px;'>Sensores de temperatura</h3>", unsafe_allow_html=True)
         main_packid()
 
