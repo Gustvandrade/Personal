@@ -874,29 +874,36 @@ def display_indicators():
                                     'Faturamento ClearCorrect', 
                                     'Sensores de Temperatura'])
 
+    # Criação de um container vazio que será atualizado com os gráficos ou dados
+    content_container = st.empty()  # Container que será limpo antes de renderizar novo conteúdo
+
     # Lógica para exibir o conteúdo baseado na aba selecionada
     if aba_selecionada == 'Tempo Médio de Atendimento':
-        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Tempo Médio de Atendimento</h3>", unsafe_allow_html=True)
+        content_container.empty()  # Limpar o conteúdo anterior
+        content_container.markdown("<h3 style='text-align: center; font-size: 24px;'>Tempo Médio de Atendimento</h3>", unsafe_allow_html=True)
         main_TMA()
 
     elif aba_selecionada == 'Entregas Motoboy':
-        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
+        content_container.empty()  # Limpar o conteúdo anterior
+        content_container.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
         df_Senior = get_data_Senior()  # Obtendo os dados do Senior
-        st.dataframe(df_Senior, use_container_width=True)
+        content_container.dataframe(df_Senior, use_container_width=True)
         
-
     elif aba_selecionada == 'Faturamento ClearCorrect':
-        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True)
+        content_container.empty()  # Limpar o conteúdo anterior
+        content_container.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True)
         df_Clear = get_data_ClearCorrect()
         df_Clear2 = get_data_ClearCorrect2()    
         display_clear_correct_chart(df_Clear, df_Clear2)
 
     elif aba_selecionada == 'Sensores de Temperatura':
-        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Sensores de temperatura</h3>", unsafe_allow_html=True)
+        content_container.empty()  # Limpar o conteúdo anterior
+        content_container.markdown("<h3 style='text-align: center; font-size: 24px;'>Sensores de temperatura</h3>", unsafe_allow_html=True)
         main_packid()
 
-# Chame a função `display_indicators()` onde for necessário
+# Chame a função display_indicators() onde for necessário
 display_indicators()
 
-time.sleep(20) 
+# Esperar 20 segundos e então forçar a atualização da página
+time.sleep(20)
 st.rerun()
