@@ -731,7 +731,7 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
         df_Clear2['Data'] = df_Clear2['Data_Hora'].dt.date
 
         # Filtrar dados para exibir apenas as últimas 24 horas
-        last_24_hours = pd.Timestamp.now() - timedelta(hours=27)  # Remover fuso horário
+        last_24_hours = pd.Timestamp.now() - timedelta(hours=24)  # Remover fuso horário
         df_Clear = df_Clear[df_Clear['Data_Hora'] >= last_24_hours]
         df_Clear2 = df_Clear2[df_Clear2['Data_Hora'] >= last_24_hours]
 
@@ -865,45 +865,42 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
 
 
 #Divisão da pág e exibição-----------------------------------------------------------------------------------------------------
-# Função para exibir o conteúdo dinâmico
-def display_indicators():
-    # Usar st.selectbox para selecionar a aba de maneira discreta
-    aba_selecionada = st.selectbox("Selecione um indicador:", 
-                                   ['Tempo Médio de Atendimento', 
-                                    'Entregas Motoboy', 
-                                    'Faturamento ClearCorrect', 
-                                    'Sensores de Temperatura'])
+# Função para atualizar o indicador no session_state
+def set_indicador(indicador):
+    st.session_state.indicador = indicador
 
-    # Limpar o conteúdo anterior para garantir que a nova seleção apareça sem sombras
-    indicator_placeholder = st.empty()  # Criando um placeholder
-    indicator_placeholder.empty()  # Limpa o conteúdo do placeholder
-    
-    # Lógica para exibir o conteúdo baseado na aba selecionada
-    if aba_selecionada == 'Tempo Médio de Atendimento':
+# Função para carregar o conteúdo de acordo com o indicador
+def display_indicators(indicador):
+    if indicador == 'Tempo Médio de Atendimento':
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Tempo Médio de Atendimento</h3>", unsafe_allow_html=True)
         main_TMA()
-
-    elif aba_selecionada == 'Entregas Motoboy':
+    elif indicador == 'Entregas Motoboy':
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
         st.dataframe(get_data_Senior(), use_container_width=True)
-        
-    elif aba_selecionada == 'Faturamento ClearCorrect':
+    elif indicador == 'Faturamento ClearCorrect':
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True)
         df_Clear = get_data_ClearCorrect()
-        df_Clear2 = get_data_ClearCorrect2()    
+        df_Clear2 = get_data_ClearCorrect2()
         display_clear_correct_chart(df_Clear, df_Clear2)
-
-    elif aba_selecionada == 'Sensores de Temperatura':
-        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Sensores de temperatura</h3>", unsafe_allow_html=True)
+    elif indicador == 'Sensores de Temperatura':
+        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Sensores de Temperatura</h3>", unsafe_allow_html=True)
         main_packid()
 
-# Configuração do timer para atualizar a cada 20 segundos
-def run_with_interval(interval=20):
-    # Exibe os indicadores
-    display_indicators()
-    # A cada 20 segundos, força uma nova execução do app
-    time.sleep(interval)
-    st.rerun()
+# Controlar o estado do indicador através do session_state
+if 'indicador' not in st.session_state:
+    st.session_state.indicador = 'Tempo Médio de Atendimento'  # Valor padrão
 
-# Executa a função com intervalo de 20 segundos
-run_with_interval(20)
+# Criando as "abas" com links na sidebar usando selectbox (sem borda)
+st.sidebar.markdown("### Selecione um indicador:")
+
+# Usando selectbox ao invés de botões
+indicador_selecionado = st.sidebar.selectbox(
+    'Escolha um indicador:',
+    ['Tempo Médio de Atendimento', 'Entregas Motoboy', 'Faturamento ClearCorrect', 'Sensores de Temperatura']
+)
+
+# Atualizando o indicador no session_state
+set_indicador(indicador_selecionado)
+
+# Exibindo o indicador baseado no session_state
+display_indicators(st.session_state.indicador)
