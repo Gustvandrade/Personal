@@ -874,34 +874,36 @@ def display_indicators():
                                     'Faturamento ClearCorrect', 
                                     'Sensores de Temperatura'])
 
-    # Criação de um container vazio para renderizar o conteúdo
-    content_container = st.empty()
-
-    # Limpar o conteúdo anterior toda vez que uma nova aba for selecionada
-    content_container.empty()
-
+    # Limpar o conteúdo anterior para garantir que a nova seleção apareça sem sombras
+    indicator_placeholder = st.empty()  # Criando um placeholder
+    indicator_placeholder.empty()  # Limpa o conteúdo do placeholder
+    
     # Lógica para exibir o conteúdo baseado na aba selecionada
     if aba_selecionada == 'Tempo Médio de Atendimento':
-        content_container.markdown("<h3 style='text-align: center; font-size: 24px;'>Tempo Médio de Atendimento</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Tempo Médio de Atendimento</h3>", unsafe_allow_html=True)
         main_TMA()
 
     elif aba_selecionada == 'Entregas Motoboy':
-        content_container.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
         st.dataframe(get_data_Senior(), use_container_width=True)
         
     elif aba_selecionada == 'Faturamento ClearCorrect':
-        content_container.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True)
         df_Clear = get_data_ClearCorrect()
         df_Clear2 = get_data_ClearCorrect2()    
         display_clear_correct_chart(df_Clear, df_Clear2)
 
     elif aba_selecionada == 'Sensores de Temperatura':
-        content_container.markdown("<h3 style='text-align: center; font-size: 24px;'>Sensores de temperatura</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Sensores de temperatura</h3>", unsafe_allow_html=True)
         main_packid()
 
-# Chame a função display_indicators() onde for necessário
-display_indicators()
+# Configuração do timer para atualizar a cada 20 segundos
+def run_with_interval(interval=20):
+    # Exibe os indicadores
+    display_indicators()
+    # A cada 20 segundos, força uma nova execução do app
+    time.sleep(interval)
+    st.rerun()
 
-# Esperar 20 segundos e então forçar a atualização da página
-time.sleep(20)
-st.rerun()
+# Executa a função com intervalo de 20 segundos
+run_with_interval(20)
