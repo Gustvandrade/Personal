@@ -929,4 +929,4 @@ st.sidebar.markdown(f'<a href="{get_link_for_indicador("Sensores de Temperatura"
 display_indicators(st.session_state.indicador)
 
 # Atualizando a página automaticamente a cada 20 segundos
-st.markdown('<meta http-equiv="refresh" content="20">', unsafe_allow_html=True)
+st.markdown('<meta http-equiv="refresh" content="120">', unsafe_allow_html=True)
