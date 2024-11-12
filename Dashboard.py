@@ -731,7 +731,7 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
         df_Clear2['Data'] = df_Clear2['Data_Hora'].dt.date
 
         # Filtrar dados para exibir apenas as últimas 24 horas
-        last_24_hours = pd.Timestamp.now() - timedelta(hours=24)  # Remover fuso horário
+        last_24_hours = pd.Timestamp.now() - timedelta(hours=27)  # Remover fuso horário
         df_Clear = df_Clear[df_Clear['Data_Hora'] >= last_24_hours]
         df_Clear2 = df_Clear2[df_Clear2['Data_Hora'] >= last_24_hours]
 
@@ -865,6 +865,22 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
 
 
 #Divisão da pág e exibição-----------------------------------------------------------------------------------------------------
+# Função para criar um link com parâmetro para cada aba
+def get_link_for_indicador(indicador):
+    return f"?indicador={indicador}"
+
+# Adicionando CSS para esconder a mensagem de aviso e remover o sublinhado dos links
+st.markdown("""
+    <style>
+        .stAlert {
+            display: none;
+        }
+        .css-1v0mbdj a {
+            text-decoration: none;  /* Remove o sublinhado */
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # Função para atualizar o indicador no session_state
 def set_indicador(indicador):
     st.session_state.indicador = indicador
@@ -886,24 +902,31 @@ def display_indicators(indicador):
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Sensores de Temperatura</h3>", unsafe_allow_html=True)
         main_packid()
 
-# Controlar o estado do indicador através do session_state
+# Função para pegar o parâmetro da URL
+def get_indicador_from_url():
+    params = st.experimental_get_query_params()  # Método para obter parâmetros da URL
+    return params.get("indicador", [None])[0]
+
+# Verificar se o indicador já está armazenado no session_state
 if 'indicador' not in st.session_state:
     st.session_state.indicador = 'Tempo Médio de Atendimento'  # Valor padrão
 
-# Criando as "abas" com links na sidebar usando selectbox (sem borda)
+# Atualiza o session_state com o valor do parâmetro de URL, se presente
+indicador_url = get_indicador_from_url()
+if indicador_url and indicador_url in ['Tempo Médio de Atendimento', 'Entregas Motoboy', 'Faturamento ClearCorrect', 'Sensores de Temperatura']:
+    set_indicador(indicador_url)
+
+# Criando as "abas" com links na sidebar
 st.sidebar.markdown("### Selecione um indicador:")
 
-# Usando selectbox ao invés de botões
-indicador_selecionado = st.sidebar.selectbox(
-    'Escolha um indicador:',
-    ['Tempo Médio de Atendimento', 'Entregas Motoboy', 'Faturamento ClearCorrect', 'Sensores de Temperatura']
-)
-
-# Atualizando o indicador no session_state
-set_indicador(indicador_selecionado)
+# Links para cada aba com o parâmetro na URL (usando a tag <a> para links clicáveis)
+st.sidebar.markdown(f'<a href="{get_link_for_indicador("Tempo Médio de Atendimento")}">Tempo Médio de Atendimento</a>', unsafe_allow_html=True)
+st.sidebar.markdown(f'<a href="{get_link_for_indicador("Entregas Motoboy")}">Entregas Motoboy</a>', unsafe_allow_html=True)
+st.sidebar.markdown(f'<a href="{get_link_for_indicador("Faturamento ClearCorrect")}">Faturamento ClearCorrect</a>', unsafe_allow_html=True)
+st.sidebar.markdown(f'<a href="{get_link_for_indicador("Sensores de Temperatura")}">Sensores de Temperatura</a>', unsafe_allow_html=True)
 
 # Exibindo o indicador baseado no session_state
 display_indicators(st.session_state.indicador)
 
-time.sleep(20)
-st.rerun()
+# Atualizando a página automaticamente a cada 20 segundos
+st.markdown('<meta http-equiv="refresh" content="20">', unsafe_allow_html=True)
