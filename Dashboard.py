@@ -767,7 +767,7 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
         fig.add_trace(go.Scatter(
             x=df_count_casos['Data_Hora'],
             y=df_count_casos['Caso'],
-            name='Casos',
+            name='Casos Faturados',
             line=dict(color='blue'),
             mode='lines+text',
             text=df_count_casos['Caso'],
@@ -779,7 +779,7 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
         fig.add_trace(go.Scatter(
             x=df_count_deliveries['Data_Hora'],
             y=df_count_deliveries['Delivery'],
-            name='Deliveries',
+            name='Casos Pendentes',
             line=dict(color='red'),
             mode='lines+markers+text',
             text=df_count_deliveries['Delivery'],
@@ -818,7 +818,7 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
                 y=1.05,
                 text=date.strftime('%d/%m'),
                 showarrow=False,
-                font=dict(size=10)
+                font=dict(size=12)
             )
 
         # Determinar o intervalo de datas para o eixo X
@@ -837,14 +837,14 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
                 y=-0.2,
                 xanchor="center",
                 x=0.5,
-                font=dict(size=10)
+                font=dict(size=12)
             ),
             xaxis=dict(
                 tickmode='array',
                 tickvals=pd.date_range(start=min_date, end=max_date, freq='H'),
-                ticktext=[(x).strftime('%H') for x in pd.date_range(start=min_date, end=max_date, freq='H')],
-                tickangle=0,
-                tickfont=dict(size=14)
+                ticktext=[(x).strftime('%H - %d/%m') for x in pd.date_range(start=min_date, end=max_date, freq='H')],
+                tickangle=45,
+                tickfont=dict(size=12)
             ),
             margin=dict(t=100, r=20, b=100, l=50),
             height=500
