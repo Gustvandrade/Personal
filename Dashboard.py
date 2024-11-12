@@ -731,7 +731,7 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
         df_Clear2['Data'] = df_Clear2['Data_Hora'].dt.date
 
         # Filtrar dados para exibir apenas as últimas 24 horas
-        last_24_hours = pd.Timestamp.now() - timedelta(hours=24)  # Remover fuso horário
+        last_24_hours = pd.Timestamp.now() - timedelta(hours=27)  # Remover fuso horário
         df_Clear = df_Clear[df_Clear['Data_Hora'] >= last_24_hours]
         df_Clear2 = df_Clear2[df_Clear2['Data_Hora'] >= last_24_hours]
 
