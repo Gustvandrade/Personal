@@ -904,3 +904,6 @@ set_indicador(indicador_selecionado)
 
 # Exibindo o indicador baseado no session_state
 display_indicators(st.session_state.indicador)
+
+time.sleep(20)
+st.rerun()
