@@ -242,7 +242,7 @@ def main_packid():
         
         st.dataframe(df_packid, use_container_width=True)
     else:
-        st.write("Nenhum dado disponível para exibir.")
+        st.write("Todos os sensores estão em conformidade. Estamos monitorando em tempo real, fique de olho!")
 
 
 # APILocker-----------------------------------------------------------------------------------------------------
@@ -500,7 +500,7 @@ def main_TMA():
 
         st.dataframe(df_TMA, use_container_width=True)
     else:
-        st.write("Nenhum dado disponível para exibir.")
+        st.write("Nenhum pedido loja aberto no momento. Estamos monitorando em tempo real, fique de olho!")
 
 # Senior-----------------------------------------------------------------------------------------------------
 # Função para exibir a barra de porcentagens baseada no Status
@@ -753,7 +753,7 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
             df_count_casos['Data_Hora'].max() is pd.NaT or
             df_count_deliveries['Data_Hora'].min() is pd.NaT or 
             df_count_deliveries['Data_Hora'].max() is pd.NaT):
-            st.write("Base atualizando, por favor aguarde.")
+            st.write("Banco de dados atualizando, por favor aguarde.")
             return
 
         # Obter intervalo de tempo correto para o eixo X
