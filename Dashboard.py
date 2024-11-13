@@ -753,12 +753,24 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
             df_count_casos['Data_Hora'].max() is pd.NaT or
             df_count_deliveries['Data_Hora'].min() is pd.NaT or 
             df_count_deliveries['Data_Hora'].max() is pd.NaT):
-            st.write("Base atualizando")
+            st.write("Base atualizando, por favor aguarde.")
             return
 
         # Obter intervalo de tempo correto para o eixo X
         min_date = max(df_count_casos['Data_Hora'].min(), last_24_hours)
         max_date = pd.Timestamp.now()
+
+        # Criar sequência de todas as horas dentro do intervalo de tempo
+        all_hours = pd.date_range(start=min_date, end=max_date, freq='H')
+
+        # Garantir que as horas ausentes no DataFrame tenham contagem 0
+        df_all_hours_casos = pd.DataFrame({'Data_Hora': all_hours})
+        df_count_casos = pd.merge(df_all_hours_casos, df_count_casos, on='Data_Hora', how='left')
+        df_count_casos['Caso'] = df_count_casos['Caso'].fillna(0)  # Preencher valores ausentes com 0
+
+        df_all_hours_deliveries = pd.DataFrame({'Data_Hora': all_hours})
+        df_count_deliveries = pd.merge(df_all_hours_deliveries, df_count_deliveries, on='Data_Hora', how='left')
+        df_count_deliveries['Delivery'] = df_count_deliveries['Delivery'].fillna(0)  # Preencher valores ausentes com 0
 
         # Criar figura com dois traces
         fig = go.Figure()
@@ -842,7 +854,7 @@ def display_clear_correct_chart(df_Clear, df_Clear2):
             xaxis=dict(
                 tickmode='array',
                 tickvals=pd.date_range(start=min_date, end=max_date, freq='H'),
-                ticktext=[(x).strftime('%H - %d/%m') for x in pd.date_range(start=min_date, end=max_date, freq='H')],
+                ticktext=[(x).strftime('%Hh - %d/%m') for x in pd.date_range(start=min_date, end=max_date, freq='H')],
                 tickangle=45,
                 tickfont=dict(size=12)
             ),
