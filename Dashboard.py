@@ -742,7 +742,7 @@ def process_and_merge_data():
     merged_df['DataHora'] = pd.to_datetime(merged_df['Data'] + ' ' + merged_df['Hora'].astype(str) + 'h', format='%d/%m %Hh')
 
     # Filtrando para remover os horários futuros do dia atual
-    now = datetime.now()
+    now = datetime.now() - timedelta(hours=3)
     now_plus_one_hour = now + timedelta(hours=1)  # Adiciona uma hora à hora atual
 
     today_str = now.strftime('%d/%m')
