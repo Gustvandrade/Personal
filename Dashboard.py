@@ -779,7 +779,7 @@ def display_graph():
         text=merged_df['Faturados'],  # Passa os valores de "Faturados"
         textposition="top center",  # Posição do rótulo (em cima do ponto)
         texttemplate="%{text}",  # Mostra o valor de cada ponto
-        textfont=dict(size=10, color="black")  # Define a fonte e cor do texto
+        textfont=dict(size=12, color="black")  # Define a fonte e cor do texto
     )
 
     # Adicionando rótulos para a linha "Pendentes" apenas quando o valor for maior que zero
@@ -789,8 +789,17 @@ def display_graph():
         text=merged_df['Pendentes'].apply(lambda x: x if x > 0 else ""),  # Aplica a condição (só exibe o valor se maior que zero)
         textposition="top center",  # Posição do rótulo (em cima do ponto)
         texttemplate="%{text}",  # Mostra o valor de cada ponto
-        textfont=dict(size=10, color="black")  # Define a fonte e cor do texto
+        textfont=dict(size=12, color="black")  # Define a fonte e cor do texto
     )
+
+    # Adicionando a linha de target (12/hora) ao gráfico com legenda
+    fig.add_traces(go.Scatter(
+        x=merged_df['DataHora'],  # Pega todos os valores no eixo X
+        y=[12] * len(merged_df),  # Repete o valor do target
+        mode='lines',  # Apenas linhas
+        line=dict(color='#F4B490', width=2, dash='dash'),  # Estilo da linha (vermelha e tracejada)
+        name='Target (12/hora)'  # Nome que aparecerá na legenda
+    ))
     
     # Atualizando o eixo X para exibir as horas no formato "08h", "09h", etc.
     fig.update_xaxes(
