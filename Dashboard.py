@@ -242,7 +242,7 @@ def main_packid():
         
         st.dataframe(df_packid, use_container_width=True)
     else:
-        st.write("Todos os sensores estão em conformidade. Estamos monitorando em tempo real, fique de olho!")
+        st.write("Nenhum dado disponível para exibir.")
 
 
 # APILocker-----------------------------------------------------------------------------------------------------
@@ -500,7 +500,7 @@ def main_TMA():
 
         st.dataframe(df_TMA, use_container_width=True)
     else:
-        st.write("Nenhum pedido loja aberto no momento. Estamos monitorando em tempo real, fique de olho!")
+        st.write("Nenhum dado disponível para exibir.")
 
 # Senior-----------------------------------------------------------------------------------------------------
 # Função para exibir a barra de porcentagens baseada no Status
@@ -710,170 +710,121 @@ def get_data_ClearCorrect2():
     finally:
         conn.close()  # Fechando a conexão
 
+# Função para processar e unir as tabelas
+def process_and_merge_data():
+    df1 = get_data_ClearCorrect()
+    df2 = get_data_ClearCorrect2()
 
-def display_clear_correct_chart(df_Clear, df_Clear2):
-    """
-    Displays a time series chart showing case counts, delivery counts, and target line per hour and day,
-    filtered to show only the last 24 hours.
-    """
-    try:
-        # Processar dados do df_Clear (casos)
-        df_Clear['Data_Hora'] = pd.to_datetime(
-            df_Clear['Data doc'].astype(str) + ' ' + df_Clear['Hora'].astype(str), 
-            format='%d.%m.%Y %H:%M:%S'
+    # Convertendo as colunas de data e hora para o formato desejado
+    df1['Data'] = pd.to_datetime(df1['Data doc'], format='%d.%m.%Y').dt.strftime('%d/%m')
+    df1['Hora'] = pd.to_datetime(df1['Hora'], format='%H:%M:%S').dt.hour
+
+    df2['Data'] = pd.to_datetime(df2['Última atualização'], format='%Y-%m-%d %H:%M:%S').dt.strftime('%d/%m')
+    df2['Hora'] = pd.to_datetime(df2['Última atualização'], format='%Y-%m-%d %H:%M:%S').dt.hour
+
+    # Agrupando e contando as ocorrências distintas de "Caso" e "Delivery"
+    df1_grouped = df1.groupby(['Data', 'Hora']).agg(Faturados=('Caso', 'nunique')).reset_index()
+    df2_grouped = df2.groupby(['Data', 'Hora']).agg(Pendentes=('Delivery', 'nunique')).reset_index()
+
+    # Criando um DataFrame com todas as combinações possíveis de "Data" e "Hora"
+    all_times = pd.MultiIndex.from_product([df1['Data'].unique(), range(24)], names=['Data', 'Hora'])
+    all_data = pd.DataFrame(index=all_times).reset_index()
+
+    # Mesclando as duas tabelas com todas as combinações possíveis de Data e Hora
+    merged_df = pd.merge(all_data, df1_grouped, on=['Data', 'Hora'], how='left')
+    merged_df = pd.merge(merged_df, df2_grouped, on=['Data', 'Hora'], how='left')
+
+    # Preenchendo valores ausentes com 0
+    merged_df['Faturados'] = merged_df['Faturados'].fillna(0)
+    merged_df['Pendentes'] = merged_df['Pendentes'].fillna(0)
+
+    # Criando uma coluna "DataHora" combinando "Data" e "Hora" para garantir a ordenação
+    merged_df['DataHora'] = pd.to_datetime(merged_df['Data'] + ' ' + merged_df['Hora'].astype(str) + 'h', format='%d/%m %Hh')
+
+    # Filtrando para remover os horários futuros do dia atual
+    now = datetime.now()
+    now_plus_one_hour = now + timedelta(hours=1)  # Adiciona uma hora à hora atual
+
+    today_str = now.strftime('%d/%m')
+
+    # Modifica a condição para considerar a hora acrescida de 1
+    merged_df = merged_df[(merged_df['Data'] < today_str) | 
+                        ((merged_df['Data'] == today_str) & (merged_df['Hora'] <= now_plus_one_hour.hour))]
+
+    # Ordenando pela coluna "DataHora"
+    merged_df = merged_df.sort_values('DataHora').reset_index(drop=True)
+
+    # Ordenando pela coluna "DataHora"
+    merged_df['DataHora'] = pd.to_datetime(merged_df['Data'] + ' ' + merged_df['Hora'].astype(str) + ':00', format='%d/%m %H:%M')
+    merged_df = merged_df.sort_values('DataHora').reset_index(drop=True)
+
+    return merged_df
+
+# Função para exibir o gráfico no Streamlit
+def display_graph():
+    merged_df = process_and_merge_data()
+
+    # Criando o gráfico de linhas com "Faturados" e "Pendentes"
+    fig = px.line(merged_df,
+                  x='DataHora',  # Eixo X contínuo com data e hora
+                  y=['Faturados', 'Pendentes'],  # Definindo as linhas para "Faturados" e "Pendentes"
+                  title="Pendentes e Faturados por Hora",
+                  labels={'DataHora': 'Data e Hora', 'Pendentes': 'Pendentes', 'Faturados': 'Faturados'},
+                  color_discrete_map={'Pendentes': '#DCDCDC', 'Faturados': '#90F8E4'})  # Definindo as cores das linhas
+
+    # Adicionando rótulos para a linha "Faturados"
+    fig.update_traces(
+        selector=dict(name='Faturados'),  # Seleciona apenas a linha "Faturados"
+        mode="lines+markers+text",  # Exibe as linhas, marcadores e texto
+        text=merged_df['Faturados'],  # Passa os valores de "Faturados"
+        textposition="top center",  # Posição do rótulo (em cima do ponto)
+        texttemplate="%{text}",  # Mostra o valor de cada ponto
+        textfont=dict(size=10, color="black")  # Define a fonte e cor do texto
+    )
+
+    # Adicionando rótulos para a linha "Pendentes" apenas quando o valor for maior que zero
+    fig.update_traces(
+        selector=dict(name='Pendentes'),  # Seleciona apenas a linha "Pendentes"
+        mode="lines+markers+text",  # Exibe as linhas, marcadores e texto
+        text=merged_df['Pendentes'].apply(lambda x: x if x > 0 else ""),  # Aplica a condição (só exibe o valor se maior que zero)
+        textposition="top center",  # Posição do rótulo (em cima do ponto)
+        texttemplate="%{text}",  # Mostra o valor de cada ponto
+        textfont=dict(size=10, color="black")  # Define a fonte e cor do texto
+    )
+    
+    # Atualizando o eixo X para exibir as horas no formato "08h", "09h", etc.
+    fig.update_xaxes(
+        tickformat="%Hh",  # Formato de hora (ex: 08h, 09h)
+        tickmode="array",  # Agora usando "array" para definir os valores e os rótulos
+        tickvals=merged_df['DataHora'],  # Usando os valores contínuos de "DataHora"
+        ticktext=merged_df['DataHora'].dt.strftime('%Hh - %d/%m'),
+        tickangle=90,  # Rotaciona os rótulos do eixo X em 90 graus
+        
+    )
+
+    # Atualizando a posição da legenda para abaixo do eixo X
+    fig.update_layout(
+        legend=dict(
+            orientation="h",  # Define a legenda horizontal
+            yanchor="bottom",  # Ancla a legenda ao fundo
+            y=-0.5,  # Coloca a legenda abaixo do gráfico (ajuste conforme necessário)
+            xanchor="center",  # Alinha a legenda ao centro
+            x=0.5,  # Define a posição da legenda no eixo X
+            title=None  # Remove qualquer título da legenda, incluindo "Variable"
         )
-        df_Clear['Hora_Fecha'] = df_Clear['Data_Hora'].dt.floor('H')
-        df_Clear['Data'] = df_Clear['Data_Hora'].dt.date
+    )
 
-        # Processar dados do df_Clear2 (deliveries)
-        df_Clear2['Data_Hora'] = pd.to_datetime(df_Clear2['Última atualização'])
-        df_Clear2['Hora_Fecha'] = df_Clear2['Data_Hora'].dt.floor('H')
-        df_Clear2['Data'] = df_Clear2['Data_Hora'].dt.date
+    # Exibindo o gráfico no Streamlit
+    st.plotly_chart(fig)
+    
 
-        # Filtrar dados para exibir apenas as últimas 24 horas
-        last_24_hours = pd.Timestamp.now() - timedelta(hours=27)  # Remover fuso horário
-        df_Clear = df_Clear[df_Clear['Data_Hora'] >= last_24_hours]
-        df_Clear2 = df_Clear2[df_Clear2['Data_Hora'] >= last_24_hours]
-
-        # Contar casos e deliveries por hora
-        df_count_casos = df_Clear.groupby(['Data', 'Hora_Fecha'])['Caso'].nunique().reset_index()
-        df_count_casos['Data_Hora'] = pd.to_datetime(
-            df_count_casos['Data'].astype(str) + ' ' + 
-            df_count_casos['Hora_Fecha'].dt.hour.astype(str) + ':00:00'
-        )
-
-        df_count_deliveries = df_Clear2.groupby(['Data', 'Hora_Fecha'])['Delivery'].nunique().reset_index()
-        df_count_deliveries['Data_Hora'] = pd.to_datetime(
-            df_count_deliveries['Data'].astype(str) + ' ' + 
-            df_count_deliveries['Hora_Fecha'].dt.hour.astype(str) + ':00:00'
-        )
-
-        # Verificar se há dados válidos
-        if (df_count_casos['Data_Hora'].min() is pd.NaT or 
-            df_count_casos['Data_Hora'].max() is pd.NaT or
-            df_count_deliveries['Data_Hora'].min() is pd.NaT or 
-            df_count_deliveries['Data_Hora'].max() is pd.NaT):
-            st.write("Banco de dados atualizando, por favor aguarde.")
-            return
-
-        # Obter intervalo de tempo correto para o eixo X
-        min_date = max(df_count_casos['Data_Hora'].min(), last_24_hours)
-        max_date = pd.Timestamp.now()
-
-        # Criar sequência de todas as horas dentro do intervalo de tempo
-        all_hours = pd.date_range(start=min_date, end=max_date, freq='H')
-
-        # Garantir que as horas ausentes no DataFrame tenham contagem 0
-        df_all_hours_casos = pd.DataFrame({'Data_Hora': all_hours})
-        df_count_casos = pd.merge(df_all_hours_casos, df_count_casos, on='Data_Hora', how='left')
-        df_count_casos['Caso'] = df_count_casos['Caso'].fillna(0)  # Preencher valores ausentes com 0
-
-        df_all_hours_deliveries = pd.DataFrame({'Data_Hora': all_hours})
-        df_count_deliveries = pd.merge(df_all_hours_deliveries, df_count_deliveries, on='Data_Hora', how='left')
-        df_count_deliveries['Delivery'] = df_count_deliveries['Delivery'].fillna(0)  # Preencher valores ausentes com 0
-
-        # Criar figura com dois traces
-        fig = go.Figure()
-
-        # Adicionar linha para casos com rótulos de dados
-        fig.add_trace(go.Scatter(
-            x=df_count_casos['Data_Hora'],
-            y=df_count_casos['Caso'],
-            name='Casos Faturados',
-            line=dict(color='blue'),
-            mode='lines+text',
-            text=df_count_casos['Caso'],
-            textposition='top center',
-            textfont=dict(size=14)
-        ))
-
-        # Adicionar linha para deliveries com rótulos de dados
-        fig.add_trace(go.Scatter(
-            x=df_count_deliveries['Data_Hora'],
-            y=df_count_deliveries['Delivery'],
-            name='Casos Pendentes',
-            line=dict(color='red'),
-            mode='lines+markers+text',
-            text=df_count_deliveries['Delivery'],
-            textposition='top center',
-            textfont=dict(size=14)
-        ))
-
-        # Adicionar linha de target
-        fig.add_trace(go.Scatter(
-            x=[min_date, max_date],
-            y=[12, 12],
-            name='Target (12/hora)',
-            line=dict(
-                color='gray',
-                dash='dash'
-            )
-        ))
-
-        # Obter a data do dia atual e filtrar as divisões dos dias
-        today = pd.to_datetime("today").normalize()  # A data de hoje à meia-noite
-
-        # Adicionar marcadores de divisão de dias a partir das 00:00 do dia atual
-        for date in pd.date_range(start=today, end=df_count_casos['Data_Hora'].max(), freq='D'):
-            # Adicionar linha vertical para cada dia a partir das 00:00
-            fig.add_vline(
-                x=date,
-                line_width=1,
-                line_dash="dash",
-                line_color="rgba(128, 128, 128, 0.5)"
-            )
-            
-            # Adicionar anotação de data
-            fig.add_annotation(
-                x=date,
-                yref="paper",
-                y=1.05,
-                text=date.strftime('%d/%m'),
-                showarrow=False,
-                font=dict(size=12)
-            )
-
-        # Determinar o intervalo de datas para o eixo X
-        min_date = min(df_count_casos['Data_Hora'].min(),
-                      df_count_deliveries['Data_Hora'].min())
-        max_date = max(df_count_casos['Data_Hora'].max(),
-                      df_count_deliveries['Data_Hora'].max())
-
-        fig.update_layout(
-            title="",
-            yaxis_title='Quantidade Casos',
-            showlegend=True,
-            legend=dict(
-                orientation="h",
-                yanchor="top",
-                y=-0.2,
-                xanchor="center",
-                x=0.5,
-                font=dict(size=12)
-            ),
-            xaxis=dict(
-                tickmode='array',
-                tickvals=pd.date_range(start=min_date, end=max_date, freq='H'),
-                ticktext=[(x).strftime('%Hh - %d/%m') for x in pd.date_range(start=min_date, end=max_date, freq='H')],
-                tickangle=45,
-                tickfont=dict(size=12)
-            ),
-            margin=dict(t=100, r=20, b=100, l=50),
-            height=500
-        )
-
-        # Forçar autoscale no eixo Y
-        fig.update_yaxes(
-            automargin=True,
-            rangemode='tozero',  # Garante que o gráfico comece do zero se necessário
-        )     
-
-        # Exibir o gráfico
-        st.plotly_chart(fig, use_container_width=True)
-
-    except Exception as e:
-        st.error(f"Erro ao gerar o gráfico: {str(e)}")
-        st.write("Por favor, verifique se os dados estão no formato correto.")
+# Função para exibir a tabela no Streamlit
+def display_table():
+    final_df = process_and_merge_data()
+    
+    # Exibindo a tabela no Streamlit
+    st.title("Contagem de Pendentes e Faturados por Hora")
+    st.dataframe(final_df)  # Exibe a tabela interativamente
 
 
 #Divisão da pág e exibição-----------------------------------------------------------------------------------------------------
@@ -906,10 +857,10 @@ def display_indicators(indicador):
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
         st.dataframe(get_data_Senior(), use_container_width=True)
     elif indicador == 'Faturamento ClearCorrect':
-        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True)
-        df_Clear = get_data_ClearCorrect()
-        df_Clear2 = get_data_ClearCorrect2()
-        display_clear_correct_chart(df_Clear, df_Clear2)
+        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True) 
+        display_graph()  # Exibe o gráfico
+        #display_table() # Exibe a tabela
+
     elif indicador == 'Sensores de Temperatura':
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Sensores de Temperatura</h3>", unsafe_allow_html=True)
         main_packid()
