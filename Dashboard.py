@@ -888,14 +888,67 @@ indicador_url = get_indicador_from_url()
 if indicador_url and indicador_url in ['Tempo Médio de Atendimento', 'Entregas Motoboy', 'Faturamento ClearCorrect', 'Sensores de Temperatura']:
     set_indicador(indicador_url)
 
+
+# Estilizando a largura da sidebar
+st.markdown("""
+    <style>
+        [data-testid="stSidebar"] {
+            width: 300px; /* Define a largura desejada */
+            min-width: 300px; /* Garante que a largura mínima seja respeitada */
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # Criando as "abas" com links na sidebar
 st.sidebar.markdown("### Selecione um indicador:")
 
-# Links para cada aba com o parâmetro na URL (usando a tag <a> para links clicáveis)
-st.sidebar.markdown(f'<a href="{get_link_for_indicador("Tempo Médio de Atendimento")}">Tempo Médio de Atendimento</a>', unsafe_allow_html=True)
-st.sidebar.markdown(f'<a href="{get_link_for_indicador("Entregas Motoboy")}">Entregas Motoboy</a>', unsafe_allow_html=True)
-st.sidebar.markdown(f'<a href="{get_link_for_indicador("Faturamento ClearCorrect")}">Faturamento ClearCorrect</a>', unsafe_allow_html=True)
-st.sidebar.markdown(f'<a href="{get_link_for_indicador("Sensores de Temperatura")}">Sensores de Temperatura</a>', unsafe_allow_html=True)
+# Links com imagens ajustadas e efeito de destaque ao passar o mouse
+st.sidebar.markdown("""
+    <style>
+        a {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: #000000;
+            margin: 16px 0;
+            font-size: 14px;
+            transition: all 0.3s ease; /* Suaviza o efeito de destaque */
+        }
+
+        a:hover {
+            color: #000000; /* Cor azul ao passar o mouse */
+            font-weight: bold; /* Deixa o texto em negrito */
+        }
+
+        img {
+            width: auto;
+            height: 20px;
+            margin-right: 20px;
+        }
+    </style>
+    <div style="text-align: left;">
+        <a href='?indicador=Tempo Médio de Atendimento'>
+            <img src='https://investidorpreguicoso.com.br/wp-content/uploads/2019/08/white-clock-icon-png-12.png' 
+                 alt='Ícone Tempo Médio'>
+            Tempo Médio de Atendimento
+        </a>
+        <a href='?indicador=Entregas Motoboy'>
+            <img src='https://cdn-icons-png.flaticon.com/512/93/93381.png' 
+                 alt='Ícone Motoboy'>
+            Entregas Motoboy
+        </a>
+        <a href='?indicador=Faturamento ClearCorrect'>
+            <img src='https://cdn-icons-png.flaticon.com/512/193/193508.png' 
+                 alt='Ícone Faturamento'>
+            Faturamento ClearCorrect
+        </a>
+        <a href='?indicador=Sensores de Temperatura'>
+            <img src='https://cdn-icons-png.flaticon.com/512/3222/3222629.png' 
+                 alt='Ícone Sensores'>
+            Sensores de Temperatura
+        </a>
+    </div>
+""", unsafe_allow_html=True)
 
 # Exibindo o indicador baseado no session_state
 display_indicators(st.session_state.indicador)
