@@ -825,7 +825,7 @@ def display_graph():
 
     # Exibindo o gráfico no Streamlit
     st.plotly_chart(fig)
-    
+   
 
 # Função para exibir a tabela no Streamlit
 def display_table():
@@ -833,7 +833,103 @@ def display_table():
     
     # Exibindo a tabela no Streamlit
     st.title("Contagem de Pendentes e Faturados por Hora")
-    st.dataframe(final_df)  # Exibe a tabela interativamente
+    st.dataframe(final_df)
+
+# Função para identificar a última atualização para cada delivery
+def identificar_ultima_atualizacao(df_Clear2):
+    # Convertendo a coluna 'Última atualização' para datetime
+    df_Clear2['Última atualização'] = pd.to_datetime(df_Clear2['Última atualização'])
+
+    # Ordenar por Delivery e por Última atualização (mais recente primeiro)
+    df_Clear2 = df_Clear2.sort_values(by=['Delivery', 'Última atualização'], ascending=[True, False])
+
+    # Encontrar a última atualização para cada 'Delivery'
+    ultima_atualizacao = df_Clear2.drop_duplicates(subset='Delivery', keep='first')
+
+    return ultima_atualizacao
+
+# Função para encontrar deliveries que atendem ao critério
+def encontrar_deliveries_validas(df_Clear2, ultima_atualizacao):
+    # Encontrar a última data e hora de atualização
+    ultima_data_hora = ultima_atualizacao['Última atualização'].max()
+
+    # Filtrando as deliveries da última atualização
+    deliveries_ultima_atualizacao = df_Clear2[df_Clear2['Última atualização'] == ultima_data_hora]['Delivery'].unique()
+
+    # Filtrando registros de dias anteriores (excluindo qualquer atualização do dia atual)
+    registros_anteriores = df_Clear2[df_Clear2['Última atualização'].dt.date < ultima_data_hora.date()]
+
+    # Encontrar deliveries presentes em dias anteriores
+    deliveries_em_dias_anteriores = registros_anteriores['Delivery'].unique()
+
+    # Interseção: deliveries presentes na última atualização **e** em dias anteriores
+    deliveries_validas = set(deliveries_ultima_atualizacao).intersection(deliveries_em_dias_anteriores)
+
+    # Retornar apenas as deliveries válidas
+    return len(deliveries_validas)
+
+# Função para exibir o cartão com a lógica de cor
+def display_metric_card(total_deliveries_distintas):
+    # Definir a classe de cor com base no valor
+    if total_deliveries_distintas > 0:
+        color_class = 'positive'
+    else:
+        color_class = 'zero'
+
+    # Exibindo o cartão com o estilo
+    st.markdown(f"""
+    <style>
+        .metric-card {{
+            background-color: #FDFDFD;
+            padding: 05px 05px;
+            border-radius: 1px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 210px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }}
+
+        .metric-card .title {{
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 10px;
+        }}
+
+        .metric-card .value {{
+            font-size: 32px;
+            font-weight: bold;
+        }}
+
+        .metric-card .positive {{
+            color: red;
+        }}
+
+        .metric-card .zero {{
+            color: green;
+        }}
+    </style>
+    <div class="metric-card">
+        <div class="title">Casos Pendentes &gt; 24h</div>
+        <div class="value {color_class}">{total_deliveries_distintas}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Obter os dados
+df_Clear2 = get_data_ClearCorrect2()
+
+# Verificar se o DataFrame não está vazio
+if not df_Clear2.empty:
+    # Identificar a última atualização para cada delivery
+    ultima_atualizacao = identificar_ultima_atualizacao(df_Clear2)
+
+    # Contar as deliveries válidas
+    total_deliveries_distintas = encontrar_deliveries_validas(df_Clear2, ultima_atualizacao)
+
+    # Exibir o cartão com o número total de deliveries válidas
+    display_metric_card(total_deliveries_distintas)
+
+else:
+    display_metric_card(0)
 
 
 #Divisão da pág e exibição-----------------------------------------------------------------------------------------------------
