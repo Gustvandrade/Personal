@@ -865,58 +865,78 @@ def encontrar_deliveries_validas(df_Clear2, ultima_atualizacao):
     # Interseção: deliveries presentes na última atualização **e** em dias anteriores
     deliveries_validas = set(deliveries_ultima_atualizacao).intersection(deliveries_em_dias_anteriores)
 
-    # Retornar apenas as deliveries válidas
-    return len(deliveries_validas)
+    # Retornar as deliveries válidas (não o tamanho, mas o conjunto de deliveries)
+    return deliveries_validas
 
 # Função para exibir o cartão com a lógica de cor
 def display_metric_card(total_deliveries_distintas):
-    # Definir a classe de cor com base no valor
-    if total_deliveries_distintas > 0:
-        color_class = 'positive'
+    # Garantir que total_deliveries_distintas seja um inteiro
+    if isinstance(total_deliveries_distintas, int):
+        # Definir a classe de cor com base no valor
+        if total_deliveries_distintas > 0:
+            color_class = 'positive'
+        else:
+            color_class = 'zero'
+
+        # Exibindo o cartão com o estilo
+        st.markdown(f"""
+        <style>
+            .metric-card {{
+                background-color: #FDFDFD;
+                padding: 05px 05px;
+                border-radius: 1px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                width: 210px;
+                text-align: center;
+                font-family: Arial, sans-serif;
+                margin-top: 5px; /* Ajuste para empurrar para cima */
+            }}
+
+            .metric-card .title {{
+                font-size: 16px;
+                color: #333;
+                margin-bottom: 10px;
+            }}
+
+            .metric-card .value {{
+                font-size: 32px;
+                font-weight: normal;
+            }}
+
+            .metric-card .positive {{
+                color: red;
+            }}
+
+            .metric-card .zero {{
+                color: green;
+            }}
+        </style>
+        <div class="metric-card">
+            <div class="title">Casos Pendentes &gt; 24h</div>
+            <div class="value {color_class}">{total_deliveries_distintas}</div>
+        </div>
+        """, unsafe_allow_html=True)
     else:
-        color_class = 'zero'
-
-    # Exibindo o cartão com o estilo
-    st.markdown(f"""
-    <style>
-        .metric-card {{
-            background-color: #FDFDFD;
-            padding: 05px 05px;
-            border-radius: 1px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            width: 210px;
-            text-align: center;
-            font-family: Arial, sans-serif;
-            margin-top: -100px; /* Ajuste para empurrar para cima */
-        }}
-
-        .metric-card .title {{
-            font-size: 16px;
-            color: #333;
-            margin-bottom: 10px;
-        }}
-
-        .metric-card .value {{
-            font-size: 32px;
-            font-weight: normal;
-        }}
-
-        .metric-card .positive {{
-            color: red;
-        }}
-
-        .metric-card .zero {{
-            color: green;
-        }}
-    </style>
-    <div class="metric-card">
-        <div class="title">Casos Pendentes &gt; 24h</div>
-        <div class="value {color_class}">{total_deliveries_distintas}</div>
-    </div>
-    """, unsafe_allow_html=True)
+        st.error("Erro: 'total_deliveries_distintas' não é um número inteiro.")
 
 # Obter os dados
 df_Clear2 = get_data_ClearCorrect2()
+
+# Identificar a última atualização
+ultima_atualizacao = identificar_ultima_atualizacao(df_Clear2)
+
+# Encontrar as deliveries válidas
+deliveries_validas = encontrar_deliveries_validas(df_Clear2, ultima_atualizacao)
+
+# Verificar o número de deliveries válidas (tamanho do conjunto)
+total_deliveries_distintas = len(deliveries_validas)  # Isso deve ser um número inteiro
+
+# Mostrar o cartão
+display_metric_card(total_deliveries_distintas)
+
+# Criar o dataframe com as deliveries válidas para download
+df_deliveries_validas = df_Clear2[df_Clear2['Delivery'].isin(deliveries_validas)]
+
 
 
 #Divisão da pág e exibição-----------------------------------------------------------------------------------------------------
@@ -945,9 +965,11 @@ def display_indicators(indicador):
     if indicador == 'Tempo Médio de Atendimento':
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Tempo Médio de Atendimento</h3>", unsafe_allow_html=True)
         main_TMA()
+
     elif indicador == 'Entregas Motoboy':
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
         st.dataframe(get_data_Senior(), use_container_width=True)
+        
     elif indicador == 'Faturamento ClearCorrect':
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True) 
         # Verificar se o DataFrame não está vazio
@@ -963,8 +985,15 @@ def display_indicators(indicador):
 
         else:
             display_metric_card(0)
-            
+
         display_graph()  # Exibe o gráfico
+        # Botão de download para as deliveries válidas
+        st.download_button(
+            label="Download casos pendentes",
+            data=df_deliveries_validas.to_csv(index=False).encode('utf-8'),
+            file_name='deliveries_validas.csv',
+            mime='text/csv'
+        )
         #display_table() # Exibe a tabela
 
     elif indicador == 'Sensores de Temperatura':
