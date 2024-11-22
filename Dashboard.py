@@ -931,9 +931,6 @@ deliveries_validas = encontrar_deliveries_validas(df_Clear2, ultima_atualizacao)
 # Verificar o número de deliveries válidas (tamanho do conjunto)
 total_deliveries_distintas = len(deliveries_validas)  # Isso deve ser um número inteiro
 
-# Mostrar o cartão
-display_metric_card(total_deliveries_distintas)
-
 # Criar o dataframe com as deliveries válidas para download
 df_deliveries_validas = df_Clear2[df_Clear2['Delivery'].isin(deliveries_validas)]
 
@@ -970,23 +967,25 @@ def display_indicators(indicador):
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
         st.dataframe(get_data_Senior(), use_container_width=True)
         
-    elif indicador == 'Faturamento ClearCorrect':
-        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True) 
+    elif indicador == 'Faturamento ClearCorrect':     
         # Verificar se o DataFrame não está vazio
         if not df_Clear2.empty:
             # Identificar a última atualização para cada delivery
             ultima_atualizacao = identificar_ultima_atualizacao(df_Clear2)
 
             # Contar as deliveries válidas
-            total_deliveries_distintas = encontrar_deliveries_validas(df_Clear2, ultima_atualizacao)
-
-            # Exibir o cartão com o número total de deliveries válidas
+            deliveries_validas = encontrar_deliveries_validas(df_Clear2, ultima_atualizacao)
+            total_deliveries_distintas = len(deliveries_validas)
+            
+            # Exibir o cartão de contagem
             display_metric_card(total_deliveries_distintas)
-
         else:
             display_metric_card(0)
+        
+        st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True) 
 
         display_graph()  # Exibe o gráfico
+
         # Botão de download para as deliveries válidas
         st.download_button(
             label="Download casos pendentes",
@@ -994,7 +993,6 @@ def display_indicators(indicador):
             file_name='deliveries_validas.csv',
             mime='text/csv'
         )
-        #display_table() # Exibe a tabela
 
     elif indicador == 'Sensores de Temperatura':
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Sensores de Temperatura</h3>", unsafe_allow_html=True)
