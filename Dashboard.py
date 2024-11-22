@@ -887,6 +887,7 @@ def display_metric_card(total_deliveries_distintas):
             width: 210px;
             text-align: center;
             font-family: Arial, sans-serif;
+            margin-top: -100px; /* Ajuste para empurrar para cima */
         }}
 
         .metric-card .title {{
@@ -897,7 +898,7 @@ def display_metric_card(total_deliveries_distintas):
 
         .metric-card .value {{
             font-size: 32px;
-            font-weight: bold;
+            font-weight: normal;
         }}
 
         .metric-card .positive {{
@@ -916,20 +917,6 @@ def display_metric_card(total_deliveries_distintas):
 
 # Obter os dados
 df_Clear2 = get_data_ClearCorrect2()
-
-# Verificar se o DataFrame não está vazio
-if not df_Clear2.empty:
-    # Identificar a última atualização para cada delivery
-    ultima_atualizacao = identificar_ultima_atualizacao(df_Clear2)
-
-    # Contar as deliveries válidas
-    total_deliveries_distintas = encontrar_deliveries_validas(df_Clear2, ultima_atualizacao)
-
-    # Exibir o cartão com o número total de deliveries válidas
-    display_metric_card(total_deliveries_distintas)
-
-else:
-    display_metric_card(0)
 
 
 #Divisão da pág e exibição-----------------------------------------------------------------------------------------------------
@@ -963,6 +950,20 @@ def display_indicators(indicador):
         st.dataframe(get_data_Senior(), use_container_width=True)
     elif indicador == 'Faturamento ClearCorrect':
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True) 
+        # Verificar se o DataFrame não está vazio
+        if not df_Clear2.empty:
+            # Identificar a última atualização para cada delivery
+            ultima_atualizacao = identificar_ultima_atualizacao(df_Clear2)
+
+            # Contar as deliveries válidas
+            total_deliveries_distintas = encontrar_deliveries_validas(df_Clear2, ultima_atualizacao)
+
+            # Exibir o cartão com o número total de deliveries válidas
+            display_metric_card(total_deliveries_distintas)
+
+        else:
+            display_metric_card(0)
+            
         display_graph()  # Exibe o gráfico
         #display_table() # Exibe a tabela
 
