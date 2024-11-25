@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 import streamlit.components.v1 as components
+from datetime import datetime
+from io import BytesIO
+import base64
 
 # Configuração da página para layout "wide"
 st.set_page_config(layout="wide")
@@ -697,7 +700,9 @@ def get_data_ClearCorrect2():
         query = """
         SELECT DISTINCT 
             Document,
-            Refresh
+            Refresh,
+            [Bill.Date],
+            [Sold-to party locat.]
             FROM dbo.TC_VF04;
         """
         df_Clear2 = pd.read_sql_query(query, conn)
@@ -835,104 +840,174 @@ def display_table():
     st.title("Contagem de Pendentes e Faturados por Hora")
     st.dataframe(final_df)
 
-# Função para identificar a última atualização para cada delivery
-def identificar_ultima_atualizacao(df_Clear2):
-    # Convertendo a coluna 'Última atualização' para datetime
-    df_Clear2['Última atualização'] = pd.to_datetime(df_Clear2['Última atualização'])
+# Função para identificar a última atualização para o cartão de contagem
+def identificar_ultima_atualizacao(df):
+    # Verificar se a coluna 'Última atualização' existe
+    if 'Última atualização' not in df.columns:
+        st.error("A coluna 'Última atualização' não foi encontrada no DataFrame.")
+        return None
 
-    # Ordenar por Delivery e por Última atualização (mais recente primeiro)
-    df_Clear2 = df_Clear2.sort_values(by=['Delivery', 'Última atualização'], ascending=[True, False])
+    try:
+        # Tentar converter a coluna 'Última atualização' para datetime com o formato yyyy-mm-dd hh:mm:ss
+        df['Última atualização'] = pd.to_datetime(df['Última atualização'], format='%Y-%m-%d %H:%M:%S')
+    except Exception as e:
+        st.error(f"Erro ao converter 'Última atualização' para datetime: {e}")
+        return None
 
-    # Encontrar a última atualização para cada 'Delivery'
-    ultima_atualizacao = df_Clear2.drop_duplicates(subset='Delivery', keep='first')
+    # Remover duplicados com base na coluna 'Última atualização' antes de ordenar
+    df = df.drop_duplicates(subset=['Última atualização'])
 
+    ultima_atualizacao = df[['Última atualização']].drop_duplicates().sort_values(by='Última atualização', ascending=False)
     return ultima_atualizacao
+
+# Função para botão de download de arquivo XLSX
+def download_button(df, filename):
+    # Remover a coluna 'Última atualização' antes de salvar no arquivo
+    df = df.drop(columns=['Última atualização'], errors='ignore')  # 'errors="ignore"' para não gerar erro se a coluna não existir
+    # Cria um objeto BytesIO para salvar os dados em memória
+    towrite = BytesIO()
+    
+    # Salva o DataFrame no formato XLSX no objeto BytesIO
+    with pd.ExcelWriter(towrite, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Deliveries')  # Salva na planilha "Deliveries"
+    
+    # Move o cursor para o começo do objeto BytesIO
+    towrite.seek(0)
+    
+    # Cria o botão de download no Streamlit
+    st.download_button(label="Baixar Deliveries em XLSX", data=towrite, file_name=filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 # Função para encontrar deliveries que atendem ao critério
 def encontrar_deliveries_validas(df_Clear2, ultima_atualizacao):
-    # Encontrar a última data e hora de atualização
+    if ultima_atualizacao is None:
+        return 0  # Se não encontrou a última atualização, retorna 0
+
+    # Garantir que 'Bill.Date' seja convertido corretamente para datetime
+    df_Clear2['Bill.Date'] = pd.to_datetime(df_Clear2['Bill.Date'], format='%d.%m.%Y')
+
     ultima_data_hora = ultima_atualizacao['Última atualização'].max()
 
     # Filtrando as deliveries da última atualização
     deliveries_ultima_atualizacao = df_Clear2[df_Clear2['Última atualização'] == ultima_data_hora]['Delivery'].unique()
 
-    # Filtrando registros de dias anteriores (excluindo qualquer atualização do dia atual)
-    registros_anteriores = df_Clear2[df_Clear2['Última atualização'].dt.date < ultima_data_hora.date()]
+    # Filtrando registros com 'Bill.Date' anterior ao dia atual
+    data_atual = datetime.now().date()  # A função `now()` vem da classe `datetime` importada
+    registros_anteriores = df_Clear2[df_Clear2['Bill.Date'].dt.date < data_atual]
 
-    # Encontrar deliveries presentes em dias anteriores
-    deliveries_em_dias_anteriores = registros_anteriores['Delivery'].unique()
+    # Encontrar deliveries com 'Bill.Date' anterior ao dia atual
+    deliveries_anteriores = registros_anteriores['Delivery'].unique()
 
-    # Interseção: deliveries presentes na última atualização **e** em dias anteriores
-    deliveries_validas = set(deliveries_ultima_atualizacao).intersection(deliveries_em_dias_anteriores)
+    # Interseção: deliveries presentes na última atualização **e** com Bill.Date anterior ao dia atual
+    deliveries_validas = set(deliveries_ultima_atualizacao).intersection(deliveries_anteriores)
 
-    # Retornar as deliveries válidas (não o tamanho, mas o conjunto de deliveries)
-    return deliveries_validas
+    # Contar o número de deliveries válidas
+    total_deliveries_validas = len(deliveries_validas)
 
-# Função para exibir o cartão com a lógica de cor
-def display_metric_card(total_deliveries_distintas):
-    # Garantir que total_deliveries_distintas seja um inteiro
-    if isinstance(total_deliveries_distintas, int):
+    # Filtra as deliveries válidas para download
+    deliveries_validas_df = df_Clear2[df_Clear2['Delivery'].isin(deliveries_validas)].drop_duplicates(subset=['Delivery'])
+
+    # Renomeia as colunas
+    deliveries_validas_df = deliveries_validas_df.rename(
+        columns={
+            'Bill.Date': 'Data Faturamento',
+            'Sold-to party locat.': 'Região'
+        }
+    )
+
+    return total_deliveries_validas, deliveries_validas_df
+
+# Função para exibir o cartão com a lógica de cor em CSS
+def display_metric_card(total_deliveries_validas):
+    # Garantir que total_deliveries_validas seja um inteiro
+    if isinstance(total_deliveries_validas, int):
         # Definir a classe de cor com base no valor
-        if total_deliveries_distintas > 0:
+        if total_deliveries_validas > 0:
             color_class = 'positive'
         else:
             color_class = 'zero'
 
-        # Exibindo o cartão com o estilo
+        # Exibindo o cartão
         st.markdown(f"""
         <style>
             .metric-card {{
                 background-color: #FDFDFD;
-                padding: 05px 05px;
-                border-radius: 1px;
+                padding: 10px;
+                border-radius: 10px;
                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                width: 210px;
+                width: 250px;
                 text-align: center;
                 font-family: Arial, sans-serif;
-                margin-top: 5px; /* Ajuste para empurrar para cima */
+                margin-top: 10px;
             }}
-
             .metric-card .title {{
-                font-size: 16px;
+                font-size: 18px;
                 color: #333;
                 margin-bottom: 10px;
             }}
-
             .metric-card .value {{
                 font-size: 32px;
                 font-weight: normal;
             }}
-
             .metric-card .positive {{
                 color: red;
             }}
-
             .metric-card .zero {{
                 color: green;
             }}
         </style>
         <div class="metric-card">
             <div class="title">Casos Pendentes &gt; 24h</div>
-            <div class="value {color_class}">{total_deliveries_distintas}</div>
+            <div class="value {color_class}">{total_deliveries_validas}</div>
         </div>
         """, unsafe_allow_html=True)
     else:
-        st.error("Erro: 'total_deliveries_distintas' não é um número inteiro.")
+        st.error("Erro: 'total_deliveries_validas' não é um número inteiro.")
 
-# Obter os dados
-df_Clear2 = get_data_ClearCorrect2()
+# Função para exibir o botão de download estilizado
+def display_download_button(df, filename):
+    # Cria o objeto BytesIO para salvar o DataFrame em memória
+    towrite = BytesIO()
 
-# Identificar a última atualização
-ultima_atualizacao = identificar_ultima_atualizacao(df_Clear2)
+    # Remover a coluna 'Última atualização' antes de salvar
+    df = df.drop(columns=['Última atualização'], errors='ignore')  # Evitar erro se a coluna não existir
 
-# Encontrar as deliveries válidas
-deliveries_validas = encontrar_deliveries_validas(df_Clear2, ultima_atualizacao)
+    # Salvar o DataFrame em formato XLSX
+    with pd.ExcelWriter(towrite, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Deliveries')  # Salva na planilha "Deliveries"
 
-# Verificar o número de deliveries válidas (tamanho do conjunto)
-total_deliveries_distintas = len(deliveries_validas)  # Isso deve ser um número inteiro
+    # Move o cursor para o começo do objeto BytesIO
+    towrite.seek(0)
 
-# Criar o dataframe com as deliveries válidas para download
-df_deliveries_validas = df_Clear2[df_Clear2['Delivery'].isin(deliveries_validas)]
+    # Exibir o botão de download com o estilo personalizado em CSS
+    st.markdown(f"""
+    <style>
+        .download-button {{
+            background-color: #FDFDFD;
+            color: white;
+            padding: 10px 70px;
+            font-size: 14px;
+            border: none;
+            width: 250px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            display: inline-block;
+            text-decoration: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }}
+        .download-button:hover {{
+            background-color: #F2F2F2; /* Cor de fundo ao passar o mouse */
+            color: black; /* Cor do texto ao passar o mouse */
+            font-size: 14px !important; /* Mantém o mesmo tamanho da fonte */
+            transform: none !important;
+        }}
+    </style>
+    <a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{base64.b64encode(towrite.getvalue()).decode()}" 
+       download="{filename}" 
+       class="download-button">
+       Download Casos
+    </a>
+    """, unsafe_allow_html=True)
 
 
 
@@ -966,34 +1041,55 @@ def display_indicators(indicador):
     elif indicador == 'Entregas Motoboy':
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Entregas Motoboy</h3>", unsafe_allow_html=True)
         st.dataframe(get_data_Senior(), use_container_width=True)
-        
-    elif indicador == 'Faturamento ClearCorrect':     
-        # Verificar se o DataFrame não está vazio
-        if not df_Clear2.empty:
-            # Identificar a última atualização para cada delivery
-            ultima_atualizacao = identificar_ultima_atualizacao(df_Clear2)
 
-            # Contar as deliveries válidas
-            deliveries_validas = encontrar_deliveries_validas(df_Clear2, ultima_atualizacao)
-            total_deliveries_distintas = len(deliveries_validas)
-            
-            # Exibir o cartão de contagem
-            display_metric_card(total_deliveries_distintas)
-        else:
-            display_metric_card(0)
+
+    elif indicador == 'Faturamento ClearCorrect':           
         
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Faturamento ClearCorrect</h3>", unsafe_allow_html=True) 
 
         display_graph()  # Exibe o gráfico
 
-        # Botão de download para as deliveries válidas
-        st.download_button(
-            label="Download casos pendentes",
-            data=df_deliveries_validas.to_csv(index=False).encode('utf-8'),
-            file_name='deliveries_validas.csv',
-            mime='text/csv'
-        )
+        # Exibe o cartão
+        df_Clear2 = get_data_ClearCorrect2()  # Função fictícia para obter os dados
+        ultima_atualizacao = identificar_ultima_atualizacao(df_Clear2)
 
+        if ultima_atualizacao is not None:
+            # Agora desestruturamos a tupla retornada pela função
+            total_deliveries_validas, deliveries_validas_df = encontrar_deliveries_validas(df_Clear2, ultima_atualizacao)
+
+            if total_deliveries_validas > 0:  # Se o número de deliveries válidas for maior que zero
+                df_Clear2 = get_data_ClearCorrect2()  # Função fictícia para obter os dados
+                ultima_atualizacao = identificar_ultima_atualizacao(df_Clear2)
+
+                if ultima_atualizacao is not None:
+                    # Agora desestruturamos a tupla retornada pela função
+                    total_deliveries_validas, deliveries_validas_df = encontrar_deliveries_validas(df_Clear2, ultima_atualizacao)
+
+                    if total_deliveries_validas > 0:  # Se o número de deliveries válidas for maior que zero
+
+                        col1, col2 = st.columns([3, 1])  # Col1 para os elementos originais, col2 para o novo cartão
+
+                        # Elementos originais na primeira coluna
+                        with col1:
+                            display_metric_card(total_deliveries_validas)  # Cartão com contagem
+                            display_download_button(deliveries_validas_df, 'deliveries_validas.xlsx')  # Botão de download para XLSX
+                        
+                        # Novo cartão na segunda coluna
+                        with col2:
+                            st.metric(label="Correios", value="")  # Adiciona o cartão ao lado direito
+
+                    else:
+                        st.write("Nenhuma entrega válida encontrada.")
+                else:
+                    st.write("Não foi possível encontrar a última atualização.")
+
+            else:
+                st.write("Nenhuma entrega válida encontrada.")
+        else:
+            st.write("Não foi possível encontrar a última atualização.") 
+ 
+        
+       
     elif indicador == 'Sensores de Temperatura':
         st.markdown("<h3 style='text-align: center; font-size: 24px;'>Sensores de Temperatura</h3>", unsafe_allow_html=True)
         main_packid()
