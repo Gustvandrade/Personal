@@ -329,7 +329,7 @@ def main_apilocker():
     if not df_apilocker.empty:
         plot_apilocker_data(df_apilocker)
     else:
-        st.write("Nenhum dado disponível para exibir no momento.")
+        st.write("Nenhum dado disponível para exibir.")
 
 # TMA-----------------------------------------------------------------------------------------------------
 # Função para atribuir ícones com base no valor de tempo para "Loja"
