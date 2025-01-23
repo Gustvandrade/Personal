@@ -1083,7 +1083,7 @@ def display_indicators(indicador):
                     st.write("Não foi possível encontrar a última atualização.")
 
             else:
-                st.write("Nenhuma entrega válida encontrada.")
+                st.write("Nenhuma entrega válida encontrada aqui.")
         else:
             st.write("Não foi possível encontrar a última atualização.") 
  
