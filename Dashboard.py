@@ -12,6 +12,9 @@ import streamlit.components.v1 as components
 from datetime import datetime
 from io import BytesIO
 import base64
+import sqlalchemy
+from sqlalchemy import create_engine
+
 
 # Configuração da página para layout "wide"
 st.set_page_config(layout="wide")
@@ -115,31 +118,51 @@ st.markdown(
 
 
 
-# Função para obter a conexão com o banco de dados
+#Função para obter a conexão com o banco de dados
+#def get_connection():
+    #try:
+        #conn = pyodbc.connect(
+            #'DRIVER={ODBC Driver 18 for SQL Server};'
+            #'SERVER=supply-chain-prod.database.windows.net;'
+            #'DATABASE=logistics_bi;'
+            #'UID=logistics_bi_rw;'
+            #'PWD=Llt7J#4x(08'
+        #)
+        #return conn
+    #except Exception as e:
+        #st.error(f"Erro ao conectar ao servidor SQL: {e}")
+        #return None
+
+# Função para obter a conexão com o banco de dados usando SQLAlchemy
 def get_connection():
     try:
-        conn = pyodbc.connect(
-            'DRIVER={ODBC Driver 18 for SQL Server};'
-            'SERVER=supply-chain-prod.database.windows.net;'
-            'DATABASE=logistics_bi;'
-            'UID=logistics_bi_rw;'
-            'PWD=Llt7J#4x(08'
+        # Defina a URL de conexão com o SQLAlchemy, usando ODBC Driver 17 (o mais recomendado)
+        connection_string = (
+            "mssql+pyodbc://logistics_bi_rw:Llt7J#4x(08@"
+            "supply-chain-prod.database.windows.net/logistics_bi?"
+            "driver=ODBC+Driver+17+for+SQL+Server"
         )
-        return conn
+        
+        # Criação do engine de conexão com o SQLAlchemy
+        engine = create_engine(connection_string)
+        
+        # Retorna o engine (já gerencia a conexão de forma transparente)
+        return engine
     except Exception as e:
         st.error(f"Erro ao conectar ao servidor SQL: {e}")
         return None
 
+
 # PackID-----------------------------------------------------------------------------------------------------
 # Função para obter os dados do banco de dados
 def get_data_packid():
-    conn = get_connection()
-    if conn is None:
+    engine = get_connection()  # Obtém o engine
+    if engine is None:
         return pd.DataFrame(), 0
 
     try:
         count_query = "SELECT COUNT(DISTINCT label2) AS distinct_count FROM dbo.TESTE01;"
-        distinct_count_df = pd.read_sql_query(count_query, conn)
+        distinct_count_df = pd.read_sql_query(count_query, engine)
         distinct_count = distinct_count_df['distinct_count'].iloc[0]
 
         query = """
@@ -161,10 +184,11 @@ def get_data_packid():
             WHERE t1.alert_geral = 1;
         """
 
-        df = pd.read_sql_query(query, conn)
+        df = pd.read_sql_query(query, engine)
         return df, distinct_count
-    finally:
-        conn.close()
+    except Exception as e:
+        st.error(f"Erro ao consultar dados: {e}")
+        return pd.DataFrame(), 0
 
 # Função para atribuir ícones com base em condições de tempo como string
 def assign_icons(val):
@@ -183,7 +207,7 @@ def assign_icons(val):
 # Função para exibir barra de porcentagem
 def display_percentage_bar(df, distinct_count):
     if distinct_count == 0:
-        st.warning("Nenhum dado disponível para calcular as porcentagens.")
+        st.warning("Nenhum dado disponível para calcular as porcentagens")
         return
 
     count_yellow = df[df['Tempo em Alerta'] < "00:10:00"].shape[0]
