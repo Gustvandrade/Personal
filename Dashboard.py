@@ -140,7 +140,7 @@ def get_connection():
         connection_string = (
             "mssql+pyodbc://logistics_bi_rw:Llt7J#4x(08@"
             "supply-chain-prod.database.windows.net/logistics_bi?"
-            "driver=ODBC+Driver+17+for+SQL+Server"
+            "driver=ODBC+Driver+for+SQL+Server"
         )
         
         # Criação do engine de conexão com o SQLAlchemy
