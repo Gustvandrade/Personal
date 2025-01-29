@@ -2,4 +2,12 @@
 /build/
 /dist/
 /AppData/
+
+# Ignorar arquivos de log
 *.log
+
+# Ignorar o arquivo específico dashboard.exe
+/dist/dashboard.exe
+
+# Ignorar todos os arquivos na pasta build/ e seus subdiretórios
+/build/**
