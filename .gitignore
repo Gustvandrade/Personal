@@ -1,0 +1,5 @@
+# Ignorar diretórios de build e dist
+/build/
+/dist/
+/AppData/
+*.log
