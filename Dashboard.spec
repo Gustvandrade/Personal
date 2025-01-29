@@ -1,24 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_all
-
-datas = []
-binaries = []
-hiddenimports = ['importlib_metadata', 'streamlit']
-tmp_ret = collect_all('streamlit')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
-    ['dashboard.py'],
+    ['Dashboard.py'],
     pathex=[],
-    binaries=binaries,
-    datas=datas,
-    hiddenimports=hiddenimports,
+    binaries=[],
+    datas=[],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
-    noarchive=False,
+    noarchive=True,
     optimize=0,
 )
 pyz = PYZ(a.pure)
@@ -28,9 +21,9 @@ exe = EXE(
     a.scripts,
     a.binaries,
     a.datas,
-    [],
-    name='dashboard',
-    debug=False,
+    [('v', None, 'OPTION')],
+    name='Dashboard',
+    debug=True,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
