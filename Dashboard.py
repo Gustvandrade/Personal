@@ -183,7 +183,7 @@ def assign_icons(val):
 # Função para exibir barra de porcentagem
 def display_percentage_bar(df, distinct_count):
     if distinct_count == 0:
-        st.warning("Nenhum dado disponível para calcular as porcentagens.")
+        st.warning("Nenhum dado disponível para calcular as porcentagens..")
         return
 
     count_yellow = df[df['Tempo em Alerta'] < "00:10:00"].shape[0]
